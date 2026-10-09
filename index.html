@@ -689,86 +689,63 @@
   }
   .btn-register:hover { box-shadow: 0 0 60px rgba(0,255,136,.7); transform: translateY(-3px) scale(1.02); }
 
-  /* ===================== CODIGO DE CONCLUSAO ===================== */
-  .code-wrap {
-    margin: 8px 0 4px;
-    display: flex; flex-direction: column; align-items: center; gap: 12px;
-  }
-  .code-box {
-    display: inline-flex; align-items: center; gap: 14px;
-    background: rgba(0,255,136,.06);
-    border: 1px solid var(--green);
-    padding: 14px 24px;
-    box-shadow: 0 0 30px rgba(0,255,136,.25), inset 0 0 20px rgba(0,255,136,.05);
-    clip-path: polygon(10px 0%, 100% 0%, calc(100% - 10px) 100%, 0% 100%);
-  }
-  .code-label {
-    font-family: var(--font-mono); font-size: 10px;
-    color: var(--green-dim); letter-spacing: 2px;
-  }
-  .code-val {
-    font-family: var(--font-mono); font-size: 26px; font-weight: 700;
-    color: var(--green); letter-spacing: 5px;
-    text-shadow: 0 0 14px rgba(0,255,136,.6);
-    user-select: all; -webkit-user-select: all;
-  }
-  .code-copy {
-    background: transparent; border: 1px solid var(--green-dim);
-    color: var(--green); font-family: var(--font-mono);
-    font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
-    padding: 8px 14px; cursor: pointer; transition: all .25s;
-  }
-  .code-copy:hover { background: rgba(0,255,136,.12); border-color: var(--green); }
-  .code-copy.done { background: var(--green); color: var(--bg); border-color: var(--green); }
-  .code-hint {
-    font-family: var(--font-mono); font-size: 12px;
-    color: var(--text-dim); letter-spacing: 1px;
-    max-width: 520px; line-height: 1.6;
-  }
-
-  /* Aviso de obrigatoriedade. Mesma receita do .alert-banner das fases, em
-     ambar e nao em vermelho: nesta tela o vermelho significaria ameaca, e ela
-     acabou de anunciar AMEACA NEUTRALIZADA em verde. Ambar le-se como
-     pendencia, igual ao .spi-badge.orange e ao .log-entry.warn. */
-  .code-obrigatorio {
-    display: flex; align-items: center; gap: 10px;
-    max-width: 560px;
-    margin: 2px auto 0;
-    padding: 11px 18px;
-    background: rgba(255,136,0,.1);
-    border: 1px solid rgba(255,136,0,.45);
+  /* ================= CHAMADA PARA O FORMULARIO ================= */
+  /* Mesma receita do .alert-banner das fases, em ambar e nao em vermelho:
+     nesta tela o vermelho significaria ameaca, e ela acabou de anunciar
+     AMEACA NEUTRALIZADA em verde. Ambar le-se como acao pendente, igual ao
+     .spi-badge.orange e ao .log-entry.warn. */
+  .form-cta {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    max-width: 680px; width: 100%;
+    margin: 26px auto 0;
+    padding: 16px 22px;
+    background: rgba(255,136,0,.12);
+    border: 1px solid rgba(255,136,0,.55);
     border-radius: 4px;
-    font-family: var(--font-mono);
-    font-size: 12px; color: var(--orange);
-    letter-spacing: 1.5px; line-height: 1.5;
-    text-align: left;
-    animation: obrigPulse 2.4s ease-in-out infinite;
+    font-family: var(--font-display);
+    font-size: 15px; font-weight: 700; color: var(--orange);
+    letter-spacing: 2px; line-height: 1.45;
+    text-transform: uppercase; text-align: center;
+    animation: ctaPulse 2.4s ease-in-out infinite;
   }
-  .obrig-dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--orange); box-shadow: 0 0 8px var(--orange);
+  .cta-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--orange); box-shadow: 0 0 10px var(--orange);
     flex-shrink: 0;
     animation: blink 1.4s infinite;
   }
   /* Pulsa so a sombra. O @keyframes blink do jogo derruba a opacidade para .3,
-     o que deixaria metade do tempo um texto obrigatorio quase ilegivel. */
-  @keyframes obrigPulse {
-    0%,100% { box-shadow: 0 0 12px rgba(255,136,0,.18) }
-    50%     { box-shadow: 0 0 22px rgba(255,136,0,.42) }
+     o que deixaria metade do tempo esta chamada quase ilegivel. */
+  @keyframes ctaPulse {
+    0%,100% { box-shadow: 0 0 14px rgba(255,136,0,.20) }
+    50%     { box-shadow: 0 0 26px rgba(255,136,0,.48) }
   }
-  /* As outras animacoes do jogo sao decorativas; esta fica sobre texto que
-     precisa ser lido, entao respeita a preferencia do sistema. */
+  .cta-seta {
+    font-family: var(--font-mono); font-size: 20px;
+    color: var(--orange); line-height: 1;
+    margin: 10px auto 0;
+    animation: ctaSeta 1.6s ease-in-out infinite;
+  }
+  @keyframes ctaSeta {
+    0%,100% { transform: translateY(0); opacity: .75 }
+    50%     { transform: translateY(5px); opacity: 1 }
+  }
+  /* As outras animacoes do jogo sao decorativas; estas apontam o caminho da
+     unica acao que resta na tela, entao respeitam a preferencia do sistema. */
   @media (prefers-reduced-motion: reduce) {
-    .code-obrigatorio, .obrig-dot { animation: none; }
+    .form-cta, .cta-dot, .cta-seta { animation: none; }
   }
 
   /* ===================== FORMULARIO EMBUTIDO ===================== */
+  /* Moldura reforcada: depois de remover o codigo, o formulario passou a ser
+     a unica acao da tela e precisa pesar visualmente mais que os cards de
+     estatistica que vem antes dele. */
   .form-embed-wrap {
     width: 100%; max-width: 680px;
-    margin: 24px auto 40px;
-    border: 1px solid var(--green-dim);
+    margin: 14px auto 40px;
+    border: 2px solid var(--green);
     background: rgba(0,20,10,.6);
-    box-shadow: 0 0 40px rgba(0,255,136,.15);
+    box-shadow: 0 0 60px rgba(0,255,136,.3);
   }
   .form-embed-bar {
     display: flex; align-items: center; gap: 8px;
@@ -956,26 +933,30 @@
     text-align:center;
   }
 
-  .code-box{
-    padding:12px 16px;
+  /* Em coluna unica os 4 cards empilhavam e jogavam a chamada do formulario
+     para 823px numa tela de 812 — ou seja, abaixo da dobra. O auto-fit pedia
+     minmax(160px,1fr) e, com a largura util de ~335px, dois cards de 160 mais
+     o gap davam 336: faltava 1 pixel para caber a segunda coluna. Fixar 2x2
+     resolve e economiza cerca de 300px de altura. */
+  .stats-grid{
+    grid-template-columns:repeat(2,1fr);
     gap:10px;
-    flex-wrap:wrap;
-    justify-content:center;
+    margin-bottom:26px;
   }
 
-  .code-val{
-    font-size:20px;
-    letter-spacing:3px;
+  .stat-card{
+    padding:14px 10px;
   }
 
-  .code-hint{
-    font-size:11px;
+  .stat-num{
+    font-size:26px;
   }
 
-  .code-obrigatorio{
-    font-size:11px;
+  .form-cta{
+    font-size:12px;
     letter-spacing:1px;
-    padding:10px 14px;
+    padding:13px 15px;
+    gap:9px;
     max-width:100%;
   }
 
@@ -1279,29 +1260,11 @@
     </div>
   </div>
 
-  <div class="success-sys-grid">
-    <div class="success-sys-item"><div class="suc-dot"></div><div class="suc-name">PRIMUS ERP</div><div class="suc-ok">SEGURO</div></div>
-    <div class="success-sys-item"><div class="suc-dot"></div><div class="suc-name">MES</div><div class="suc-ok">SEGURO</div></div>
-    <div class="success-sys-item"><div class="suc-dot"></div><div class="suc-name">METADADOS RH</div><div class="suc-ok">SEGURO</div></div>
-    <div class="success-sys-item"><div class="suc-dot"></div><div class="suc-name">SHAREPOINT</div><div class="suc-ok">SEGURO</div></div>
-    <div class="success-sys-item"><div class="suc-dot"></div><div class="suc-name">WINDOWS SVR</div><div class="suc-ok">SEGURO</div></div>
-    <div class="success-sys-item"><div class="suc-dot"></div><div class="suc-name">POWER BI</div><div class="suc-ok">SEGURO</div></div>
+  <div class="form-cta">
+    <div class="cta-dot"></div>
+    Preencha o formulário abaixo para concorrer aos brindes
   </div>
-
-  <div class="code-wrap">
-    <div class="code-box">
-      <span class="code-label">CÓDIGO DE CONCLUSÃO</span>
-      <span class="code-val" id="completionCode">—</span>
-      <button class="code-copy" id="codeCopyBtn" onclick="copiarCodigo()">copiar</button>
-    </div>
-    <div class="code-hint">
-      Informe este código no formulário abaixo. Ele comprova que você concluiu a missão.
-    </div>
-    <div class="code-obrigatorio">
-      <div class="obrig-dot"></div>
-      PREENCHIMENTO OBRIGATÓRIO &mdash; SEM O CÓDIGO NO FORMULÁRIO, VOCÊ NÃO ENTRA NO SORTEIO
-    </div>
-  </div>
+  <div class="cta-seta">▼</div>
 
   <div class="form-embed-wrap">
     <div class="form-embed-bar">
@@ -1309,6 +1272,15 @@
     </div>
     <iframe id="formFrame" title="Registro de participação e sorteio de brindes" loading="lazy"></iframe>
     <a class="form-fallback" onclick="openForm()">O formulário não carregou? Abrir em nova aba ▸</a>
+  </div>
+
+  <div class="success-sys-grid">
+    <div class="success-sys-item"><div class="suc-dot"></div><div class="suc-name">PRIMUS ERP</div><div class="suc-ok">SEGURO</div></div>
+    <div class="success-sys-item"><div class="suc-dot"></div><div class="suc-name">MES</div><div class="suc-ok">SEGURO</div></div>
+    <div class="success-sys-item"><div class="suc-dot"></div><div class="suc-name">METADADOS RH</div><div class="suc-ok">SEGURO</div></div>
+    <div class="success-sys-item"><div class="suc-dot"></div><div class="suc-name">SHAREPOINT</div><div class="suc-ok">SEGURO</div></div>
+    <div class="success-sys-item"><div class="suc-dot"></div><div class="suc-name">WINDOWS SVR</div><div class="suc-ok">SEGURO</div></div>
+    <div class="success-sys-item"><div class="suc-dot"></div><div class="suc-name">POWER BI</div><div class="suc-ok">SEGURO</div></div>
   </div>
 </div>
 
@@ -2016,8 +1988,7 @@ function showSuccess(){
   const secs = elapsed % 60;
   document.getElementById('statTime').textContent = `${mins}m${String(secs).padStart(2,'0')}s`;
 
-  // Codigo de conclusao + carga do formulario embutido
-  document.getElementById('completionCode').textContent = gerarCodigo();
+  // Carga do formulario embutido
   document.getElementById('formFrame').src = FORM_EMBED_URL;
 
   // update all systems to secure
@@ -2038,86 +2009,6 @@ function showSuccess(){
 // So e atribuida ao iframe dentro de showSuccess(), para nao baixar a pagina da
 // Microsoft durante o jogo.
 const FORM_EMBED_URL = 'https://forms.cloud.microsoft/pages/responsepage.aspx?id=u9UAOiYsGUKgXyzSvpSN3lES7OA-cxFGqlKJLQxSiaJURU5NSEhaVk9RM1dSWTNLQkVYMFJJSFNKMi4u&embed=true';
-
-const CODE_ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-
-// Codigo de conclusao no formato BLK-XXXXXXX:
-//   6 chars -> sorteados, 36^6 = 2,18 bilhoes de combinacoes
-//   1 char  -> digito verificador: soma base36 dos 6 anteriores, mod 36
-//
-// Por que sorteado e nao derivado do horario: um codigo baseado em timestamp
-// colide entre jogadores que comecam junto (sessao de treinamento coletiva), e
-// como a apuracao descarta codigo repetido isso eliminaria participante legitimo.
-// Com 6 chars sorteados, a chance de duas partidas gerarem o mesmo codigo e de
-// ~0,02% para mil jogadores.
-//
-// O digito verificador e o que permite descartar codigo inventado na apuracao:
-// pega 100% dos erros de digitacao de 1 caractere e ~97% dos palpites aleatorios.
-//
-// O deslocamento de 7 na soma existe para que o palpite mais obvio de todos,
-// BLK-0000000, nao valide: sem ele, soma 0 pediria digito '0' e o codigo com
-// todos os caracteres zerados passaria na conferencia.
-function gerarCodigo(){
-  let core = '';
-
-  // crypto quando disponivel; Math.random so como ultimo recurso
-  if(window.crypto && window.crypto.getRandomValues){
-    const buf = new Uint8Array(6);
-    window.crypto.getRandomValues(buf);
-    // 252 = 36*7: descarta o resto da faixa de 0-255 para nao enviesar o sorteio
-    for(let i = 0; i < 6; i++){
-      let v = buf[i];
-      while(v >= 252){
-        const extra = new Uint8Array(1);
-        window.crypto.getRandomValues(extra);
-        v = extra[0];
-      }
-      core += CODE_ALPHABET[v % 36];
-    }
-  } else {
-    for(let i = 0; i < 6; i++) core += CODE_ALPHABET[Math.floor(Math.random() * 36)];
-  }
-
-  let soma = 7;
-  for(const ch of core) soma += CODE_ALPHABET.indexOf(ch);
-
-  return 'BLK-' + core + CODE_ALPHABET[soma % 36];
-}
-
-function copiarCodigo(){
-  const txt = document.getElementById('completionCode').textContent.trim();
-  const btn = document.getElementById('codeCopyBtn');
-
-  const ok = () => {
-    if(!btn) return;
-    btn.textContent = 'copiado';
-    btn.classList.add('done');
-    setTimeout(()=>{ btn.textContent = 'copiar'; btn.classList.remove('done'); }, 2000);
-  };
-
-  if(navigator.clipboard && window.isSecureContext){
-    navigator.clipboard.writeText(txt).then(ok).catch(()=>copiarFallback(txt, ok));
-  } else {
-    copiarFallback(txt, ok);
-  }
-}
-
-// Fallback para navegador corporativo antigo ou contexto nao-HTTPS
-function copiarFallback(txt, ok){
-  try{
-    const ta = document.createElement('textarea');
-    ta.value = txt;
-    ta.style.position = 'fixed';
-    ta.style.opacity = '0';
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-    ok();
-  } catch(e){
-    // sem clipboard disponivel: o codigo segue selecionavel via user-select:all
-  }
-}
 
 // Fallback caso o iframe seja barrado por proxy corporativo ou extensao
 function openForm(){
