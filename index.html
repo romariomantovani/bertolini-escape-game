@@ -778,13 +778,19 @@
     font-family: var(--font-mono); font-size: 10px;
     color: var(--green); letter-spacing: 2px;
   }
-  /* Altura fixa e tateada para caber o formulario inteiro sem scroll aninhado.
-     O Forms nao emite postMessage de altura, entao nao da para ajustar sozinho:
-     se voce acrescentar perguntas, aumente estes valores na mesma proporcao. */
+  /* A altura PRECISA ser menor que a janela. Um iframe mais alto que a viewport
+     cobre a tela inteira quando voce chega nele, e como iframe de outro dominio
+     engole o evento da roda do mouse, o scroll de fora para de responder: o
+     usuario fica preso no formulario sem alcancar o botao Enviar.
+     Com 72vh sobra sempre margem da pagina para rolar por fora, e o formulario
+     rola por dentro, com a propria barra — que e o comportamento normal de
+     formulario embutido. */
   .form-embed-wrap iframe {
     display: block;
     width: 100%; min-width: 320px;
-    min-height: 1150px; height: 1150px;
+    height: 72vh;
+    min-height: 360px;
+    max-height: 760px;
     border: 0; background: #fff;
   }
   .form-fallback {
@@ -979,9 +985,10 @@
     margin-top:18px;
   }
 
+  /* No mobile vale a mesma regra de 72vh definida acima: a altura relativa ja
+     garante margem de pagina sobrando para o toque arrastar por fora. */
   .form-embed-wrap iframe{
-    min-height:1250px;
-    height:1250px;
+    max-height:none;
   }
 }
 
