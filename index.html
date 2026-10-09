@@ -1,0 +1,2153 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OPERAÇÃO BLACKOUT — SOC Corporativo</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&family=Orbitron:wght@400;700;900&display=swap');
+
+  :root {
+    --cyan: #00d4ff;
+    --cyan-dim: #0096b3;
+    --cyan-glow: rgba(0,212,255,0.15);
+    --red: #ff2244;
+    --red-dim: #cc1133;
+    --red-glow: rgba(255,34,68,0.15);
+    --green: #00ff88;
+    --green-dim: #00bb66;
+    --green-glow: rgba(0,255,136,0.15);
+    --orange: #ff8800;
+    --yellow: #ffcc00;
+    --bg: #020810;
+    --bg2: #040f1a;
+    --bg3: #061525;
+    --panel: rgba(4,20,40,0.95);
+    --panel2: rgba(0,30,55,0.8);
+    --border: rgba(0,212,255,0.2);
+    --border-bright: rgba(0,212,255,0.6);
+    --text: #c8e8f8;
+    --text-dim: #5a8aaa;
+    --text-bright: #ffffff;
+    --font-mono: 'Share Tech Mono', monospace;
+    --font-ui: 'Rajdhani', sans-serif;
+    --font-display: 'Orbitron', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-size: 16px;
+    overflow-x: hidden;
+    cursor: default;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,212,255,0.015) 2px, rgba(0,212,255,0.015) 4px),
+      repeating-linear-gradient(90deg, transparent, transparent 60px, rgba(0,212,255,0.03) 60px, rgba(0,212,255,0.03) 61px);
+    pointer-events: none; z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,212,255,0.06) 0%, transparent 70%);
+    pointer-events: none; z-index: 0;
+  }
+
+  /* SCAN LINE */
+  .scanline {
+    position: fixed; top: 0; left: 0; width: 100%; height: 3px;
+    background: linear-gradient(transparent, rgba(0,212,255,0.4), transparent);
+    animation: scan 6s linear infinite;
+    pointer-events: none; z-index: 9999;
+  }
+  @keyframes scan { 0%{top:-3px} 100%{top:100vh} }
+
+  /* PARTICLES CANVAS */
+  #particles { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+
+  /* SCREENS */
+  .screen {
+    position: fixed; inset: 0;
+    display: none; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 10; overflow: hidden;
+  }
+  .screen.active { display: flex; }
+
+  /* ===================== INTRO SCREEN ===================== */
+  #screen-intro {
+    background: radial-gradient(ellipse 100% 80% at 50% 50%, #010a18 0%, var(--bg) 100%);
+  }
+
+  .intro-bg-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    animation: gridPulse 4s ease-in-out infinite;
+  }
+  @keyframes gridPulse { 0%,100%{opacity:.5} 50%{opacity:1} }
+
+  .soc-logo {
+    position: relative; z-index: 2;
+    text-align: center; margin-bottom: 32px;
+  }
+  .soc-logo-icon {
+    width: 80px; height: 80px; margin: 0 auto 16px;
+    border: 2px solid var(--cyan);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+    box-shadow: 0 0 30px rgba(0,212,255,0.4), inset 0 0 20px rgba(0,212,255,0.1);
+    animation: logoPulse 2s ease-in-out infinite;
+  }
+  @keyframes logoPulse {
+    0%,100%{box-shadow:0 0 30px rgba(0,212,255,.4),inset 0 0 20px rgba(0,212,255,.1)}
+    50%{box-shadow:0 0 60px rgba(0,212,255,.7),inset 0 0 30px rgba(0,212,255,.2)}
+  }
+  .soc-logo-icon::before {
+    content:''; position:absolute; inset:8px;
+    border:1px solid rgba(0,212,255,0.3); border-radius:50%;
+    animation: rotate 8s linear infinite;
+  }
+  @keyframes rotate { to { transform: rotate(360deg); } }
+  .soc-logo-icon svg { width:36px; height:36px; fill:var(--cyan); position:relative; z-index:1; }
+
+  .soc-logo-text {
+    font-family: var(--font-display);
+    font-size: 11px; letter-spacing: 5px;
+    color: var(--cyan-dim); text-transform: uppercase;
+  }
+
+  .incident-badge {
+    position: relative; z-index: 2;
+    background: rgba(255,34,68,0.1);
+    border: 1px solid var(--red);
+    border-radius: 4px;
+    padding: 6px 16px;
+    font-family: var(--font-mono);
+    font-size: 11px; color: var(--red);
+    letter-spacing: 3px;
+    animation: badgeBlink 1s ease-in-out infinite;
+    margin-bottom: 24px;
+  }
+  @keyframes badgeBlink {
+    0%,100%{opacity:1;box-shadow:0 0 10px rgba(255,34,68,.3)}
+    50%{opacity:.7;box-shadow:0 0 20px rgba(255,34,68,.6)}
+  }
+
+  .intro-title {
+    position: relative; z-index: 2;
+    font-family: var(--font-display);
+    font-size: clamp(28px, 5vw, 56px);
+    font-weight: 900;
+    color: var(--text-bright);
+    text-align: center;
+    line-height: 1.1;
+    margin-bottom: 8px;
+    text-shadow: 0 0 40px rgba(0,212,255,0.4);
+  }
+  .intro-title span { color: var(--cyan); }
+
+  .intro-sub {
+    position: relative; z-index: 2;
+    font-family: var(--font-display);
+    font-size: clamp(10px,2vw,14px);
+    letter-spacing: 6px;
+    color: var(--cyan-dim);
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .systems-status {
+    position: relative; z-index: 2;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 8px;
+    max-width: 700px; width: 90%;
+    margin-bottom: 48px;
+  }
+  .sys-item {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .sys-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .sys-dot.red { background: var(--red); box-shadow: 0 0 8px var(--red); animation: blink 1s infinite; }
+  .sys-dot.orange { background: var(--orange); box-shadow: 0 0 8px var(--orange); animation: blink 1.5s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .sys-name { font-family: var(--font-mono); font-size: 11px; color: var(--text); flex:1; }
+  .sys-status { font-size: 9px; font-family: var(--font-mono); color: var(--red); white-space: nowrap; }
+  .sys-status.orange { color: var(--orange); }
+
+  .terminal-text {
+    position: relative; z-index: 2;
+    font-family: var(--font-mono);
+    font-size: 20px; color: var(--cyan-dim);
+    text-align: center; margin-bottom: 40px;
+    min-height: 20px;
+  }
+  .cursor-blink { animation: cursorBlink .7s infinite; }
+  @keyframes cursorBlink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  .btn-primary {
+    position: relative; z-index: 2;
+    background: transparent;
+    border: 2px solid var(--cyan);
+    color: var(--cyan);
+    font-family: var(--font-display);
+    font-size: 13px; font-weight: 700;
+    letter-spacing: 4px;
+    padding: 16px 48px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all .3s;
+    clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+    overflow: hidden;
+  }
+  .btn-primary::before {
+    content:'';position:absolute;inset:0;
+    background:var(--cyan);opacity:0;
+    transition:opacity .3s;
+  }
+  .btn-primary:hover {
+    color: var(--bg);
+    box-shadow: 0 0 30px rgba(0,212,255,.6);
+    transform: translateY(-2px);
+  }
+  .btn-primary:hover::before { opacity:1; }
+  .btn-primary span { position:relative;z-index:1; }
+
+  /* ===================== MAIN GAME SCREEN ===================== */
+  #screen-game {
+    background: var(--bg);
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    overflow-y: auto;
+    padding: 0;
+  }
+
+  /* TOP BAR */
+  .topbar {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(2,8,16,0.97);
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+    display: flex; align-items: center; gap: 16px;
+    height: 52px;
+    backdrop-filter: blur(10px);
+  }
+  .topbar-logo {
+    font-family: var(--font-display);
+    font-size: 12px; font-weight: 900;
+    color: var(--cyan);
+    letter-spacing: 2px;
+    white-space: nowrap;
+  }
+  .topbar-sep { flex: 1; }
+  .threat-bar-container {
+    display: flex; align-items: center; gap: 10px;
+    flex-shrink: 0;
+  }
+  .threat-label {
+    font-family: var(--font-mono); font-size: 10px;
+    color: var(--text-dim); white-space: nowrap;
+  }
+  .threat-bar {
+    width: 120px; height: 6px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    border-radius: 3px; overflow: hidden;
+  }
+  .threat-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--red-dim), var(--red));
+    border-radius: 3px;
+    transition: width 1s ease;
+    box-shadow: 0 0 8px var(--red);
+  }
+  .threat-pct {
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--red); min-width: 36px;
+  }
+  .phase-counter {
+    font-family: var(--font-mono); font-size: 10px;
+    color: var(--text-dim); white-space: nowrap;
+  }
+  .phase-counter span { color: var(--cyan); }
+
+  /* GAME LAYOUT */
+  .game-layout {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 0;
+    min-height: calc(100vh - 52px);
+  }
+  @media(max-width:800px){
+    .game-layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    background: rgba(2,12,24,0.95);
+    border-right: 1px solid var(--border);
+    padding: 16px 12px;
+    display: flex; flex-direction: column; gap: 16px;
+    overflow-y: auto;
+  }
+  .sidebar-title {
+    font-family: var(--font-mono); font-size: 10px;
+    color: var(--cyan-dim); letter-spacing: 2px;
+    text-transform: uppercase; padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sys-panel-item {
+    display: flex; flex-direction: column; gap: 4px;
+    padding: 10px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    transition: border-color .5s, background .5s;
+  }
+  .sys-panel-item.compromised { border-color: rgba(255,34,68,.4); background: rgba(255,34,68,.05); }
+  .sys-panel-item.warning { border-color: rgba(255,136,0,.4); background: rgba(255,136,0,.05); }
+  .sys-panel-item.secure { border-color: rgba(0,255,136,.4); background: rgba(0,255,136,.05); }
+  .spi-header { display: flex; align-items: center; gap: 8px; }
+  .spi-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .spi-dot.red { background:var(--red); box-shadow:0 0 6px var(--red); animation:blink 1s infinite; }
+  .spi-dot.orange { background:var(--orange); box-shadow:0 0 6px var(--orange); animation:blink 1.4s infinite; }
+  .spi-dot.green { background:var(--green); box-shadow:0 0 6px var(--green); }
+  .spi-name { font-family:var(--font-mono); font-size:11px; color:var(--text); flex:1; }
+  .spi-badge { font-size:9px; font-family:var(--font-mono); padding:2px 6px; border-radius:2px; white-space:nowrap; }
+  .spi-badge.red { background:rgba(255,34,68,.2); color:var(--red); border:1px solid rgba(255,34,68,.3); }
+  .spi-badge.orange { background:rgba(255,136,0,.2); color:var(--orange); border:1px solid rgba(255,136,0,.3); }
+  .spi-badge.green { background:rgba(0,255,136,.2); color:var(--green); border:1px solid rgba(0,255,136,.3); }
+  .spi-prog { height:3px; background:rgba(255,255,255,.05); border-radius:2px; overflow:hidden; margin-top:4px; }
+  .spi-prog-fill { height:100%; border-radius:2px; transition:width 1s ease, background 1s; }
+
+  .log-box {
+    background: rgba(0,0,0,.4);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px;
+    flex: 1; overflow-y: auto;
+    max-height: 220px;
+  }
+  .log-entry {
+    font-family: var(--font-mono); font-size: 10px;
+    line-height: 1.6; color: var(--text-dim);
+    border-bottom: 1px solid rgba(0,212,255,.05);
+    padding: 2px 0;
+  }
+  .log-entry.warn { color: var(--orange); }
+  .log-entry.error { color: var(--red); }
+  .log-entry.success { color: var(--green); }
+
+  /* MAIN CONTENT */
+  .main-content {
+    padding: 24px;
+    display: flex; flex-direction: column; gap: 20px;
+  }
+
+  /* PHASE PANEL */
+  .phase-panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .phase-header {
+    background: rgba(0,212,255,.05);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 20px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .phase-num {
+    font-family: var(--font-display);
+    font-size: 28px; font-weight: 900;
+    color: var(--cyan); opacity: .3;
+    line-height: 1;
+  }
+  .phase-info { flex: 1; }
+  .phase-tag {
+    font-family: var(--font-mono); font-size: 10px;
+    color: var(--red); letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+  .phase-title-text {
+    font-family: var(--font-display);
+    font-size: clamp(14px,2.5vw,20px);
+    font-weight: 700; color: var(--text-bright);
+  }
+  .phase-body { padding: 20px; }
+
+  .context-box {
+    background: rgba(0,0,0,.3);
+    border: 1px solid rgba(0,212,255,.1);
+    border-left: 3px solid var(--red);
+    border-radius: 4px;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+  }
+  .context-label {
+    font-family: var(--font-mono); font-size: 9px;
+    color: var(--red); letter-spacing: 3px;
+    margin-bottom: 8px;
+  }
+  .context-text {
+    font-size: 14px; line-height: 1.6;
+    color: var(--text);
+  }
+
+  /* VISUAL ELEMENTS */
+  .visual-element {
+    background: rgba(0,0,0,.5);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 20px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .visual-title {
+    font-size: 10px; color: var(--cyan-dim);
+    letter-spacing: 2px; margin-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+  }
+  .log-line { color: var(--text-dim); line-height: 2; }
+  .log-line.em { color: var(--cyan); }
+  .log-line.warn { color: var(--orange); }
+  .log-line.err { color: var(--red); }
+
+  /* QUESTION */
+  .question-label {
+    font-family: var(--font-mono); font-size: 10px;
+    color: var(--cyan-dim); letter-spacing: 2px;
+    margin-bottom: 12px;
+  }
+  .question-text {
+    font-size: clamp(15px,2.5vw,18px); font-weight: 600;
+    color: var(--text-bright); margin-bottom: 20px;
+    line-height: 1.5;
+  }
+
+  .options-grid {
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .option-btn {
+    background: rgba(0,212,255,.04);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 18px;
+    color: var(--text);
+    font-family: var(--font-ui); font-size: 14px;
+    font-weight: 500;
+    text-align: left; cursor: pointer;
+    transition: all .2s;
+    display: flex; align-items: center; gap: 12px;
+    position: relative; overflow: hidden;
+  }
+  .option-btn::before {
+    content:''; position:absolute; left:0; top:0; bottom:0;
+    width:3px; background:var(--cyan); opacity:0;
+    transition:opacity .2s;
+  }
+  .option-btn:hover { border-color:var(--cyan); background:rgba(0,212,255,.08); }
+  .option-btn:hover::before { opacity:1; }
+  .option-btn.correct { border-color:var(--green)!important; background:rgba(0,255,136,.08)!important; color:var(--green)!important; }
+  .option-btn.incorrect { border-color:var(--red)!important; background:rgba(255,34,68,.08)!important; color:var(--red)!important; }
+  .option-btn.disabled { pointer-events:none; opacity:.5; }
+  .opt-letter {
+    width:24px; height:24px; border-radius:4px;
+    background:rgba(0,212,255,.1); border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-mono); font-size:11px; color:var(--cyan);
+    flex-shrink:0; transition:all .2s;
+  }
+  .option-btn.correct .opt-letter { background:rgba(0,255,136,.2); border-color:var(--green); color:var(--green); }
+  .option-btn.incorrect .opt-letter { background:rgba(255,34,68,.2); border-color:var(--red); color:var(--red); }
+
+  /* FEEDBACK */
+  .feedback-box {
+    display: none;
+    border-radius: 6px;
+    padding: 16px 18px;
+    margin-top: 16px;
+    border-left: 4px solid;
+  }
+  .feedback-box.show { display: block; }
+  .feedback-box.success {
+    background: rgba(0,255,136,.08);
+    border-color: var(--green);
+  }
+  .feedback-box.error {
+    background: rgba(255,34,68,.08);
+    border-color: var(--red);
+  }
+  .feedback-title {
+    font-family: var(--font-display); font-size: 13px; font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .feedback-box.success .feedback-title {
+  color: #00ff88 !important;
+  font-size: 18px;
+  font-weight: 900;
+  text-shadow: 0 0 10px rgba(0,255,136,.7);
+}
+  .feedback-box.error .feedback-title {
+  color: #ff2244 !important;
+  font-size: 18px;
+  font-weight: 900;
+  text-shadow: 0 0 10px rgba(255,34,68,.7);
+}
+  .feedback-text { font-size: 13px; line-height: 1.6; color: var(--text); }
+
+  .next-btn {
+    display: none;
+    margin-top: 20px;
+    background: transparent;
+    border: 1px solid var(--green);
+    color: var(--green);
+    font-family: var(--font-display);
+    font-size: 12px; font-weight: 700;
+    letter-spacing: 3px;
+    padding: 12px 32px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all .3s;
+    clip-path: polygon(6px 0%, 100% 0%, calc(100% - 6px) 100%, 0% 100%);
+  }
+  .next-btn.show { display: inline-flex; align-items: center; gap: 10px; }
+  .next-btn:hover { background: rgba(0,255,136,.1); box-shadow: 0 0 20px rgba(0,255,136,.3); }
+
+  /* PROGRESS */
+  .progress-bar {
+    background: rgba(0,0,0,.3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .progress-label { font-family:var(--font-mono); font-size:10px; color:var(--text-dim); white-space:nowrap; }
+  .progress-track {
+    flex:1; height:6px; background:rgba(255,255,255,.05);
+    border-radius:3px; overflow:hidden;
+  }
+  .progress-fill {
+    height:100%;
+    background: linear-gradient(90deg, var(--cyan-dim), var(--cyan));
+    border-radius:3px;
+    transition: width 1s ease;
+    box-shadow: 0 0 8px var(--cyan);
+  }
+  .progress-pct { font-family:var(--font-mono); font-size:11px; color:var(--cyan); min-width:36px; }
+
+  /* QR visual */
+  .qr-mock {
+    display: inline-block;
+    background: white;
+    padding: 12px;
+    border-radius: 4px;
+    position: relative;
+    margin: 8px 0;
+  }
+  .qr-mock::after {
+    content: '⚠ SUSPEITO';
+    position: absolute; top: -10px; right: -10px;
+    background: var(--red); color: white;
+    font-family: var(--font-mono); font-size: 9px;
+    padding: 2px 6px; border-radius: 3px;
+    animation: blink 1s infinite;
+  }
+  .qr-svg { width: 80px; height: 80px; }
+
+  /* ===================== SUCCESS SCREEN ===================== */
+  #screen-success {
+    background: radial-gradient(ellipse 80% 70% at 50% 50%, #001a0d 0%, var(--bg) 100%);
+    text-align: center;
+    padding: 40px 20px;
+    overflow-y: auto;
+    align-items: center;
+    /* flex-start, nao center: com o formulario embutido o conteudo passa da
+       altura da viewport e o centramento cortaria o topo sem deixar rolar */
+    justify-content: flex-start;
+  }
+
+  .success-icon {
+    width: 100px; height: 100px; border-radius: 50%;
+    border: 3px solid var(--green);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 24px;
+    box-shadow: 0 0 60px rgba(0,255,136,.5), inset 0 0 30px rgba(0,255,136,.1);
+    animation: successPulse 2s ease-in-out infinite;
+  }
+  @keyframes successPulse {
+    0%,100%{box-shadow:0 0 60px rgba(0,255,136,.5),inset 0 0 30px rgba(0,255,136,.1)}
+    50%{box-shadow:0 0 100px rgba(0,255,136,.8),inset 0 0 50px rgba(0,255,136,.2)}
+  }
+  .success-icon svg { width:48px; height:48px; fill:var(--green); }
+
+  .success-badge {
+    background: rgba(0,255,136,.1);
+    border: 1px solid rgba(0,255,136,.4);
+    border-radius: 4px;
+    padding: 6px 20px;
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--green); letter-spacing: 3px;
+    display: inline-block; margin-bottom: 20px;
+  }
+
+  .success-title {
+    font-family: var(--font-display);
+    font-size: clamp(28px,5vw,52px); font-weight: 900;
+    color: var(--text-bright);
+    text-shadow: 0 0 40px rgba(0,255,136,.4);
+    margin-bottom: 8px;
+  }
+  .success-title span { color: var(--green); }
+
+  .success-sub {
+    font-family: var(--font-display); font-size: 12px;
+    letter-spacing: 5px; color: var(--green-dim);
+    margin-bottom: 48px;
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px,1fr));
+    gap: 16px;
+    max-width: 700px; width: 100%;
+    margin: 0 auto 48px;
+  }
+  .stat-card {
+    background: var(--panel);
+    border: 1px solid rgba(0,255,136,.2);
+    border-radius: 8px;
+    padding: 20px 16px;
+  }
+  .stat-num {
+    font-family: var(--font-display);
+    font-size: 36px; font-weight: 900;
+    color: var(--green);
+    line-height: 1;
+  }
+  .stat-label {
+    font-family: var(--font-mono); font-size: 10px;
+    color: var(--text-dim); letter-spacing: 2px;
+    margin-top: 6px;
+  }
+
+  .success-sys-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px,1fr));
+    gap: 8px;
+    max-width: 700px; width: 100%;
+    margin: 0 auto 48px;
+  }
+  .success-sys-item {
+    background: rgba(0,255,136,.05);
+    border: 1px solid rgba(0,255,136,.2);
+    border-radius: 4px;
+    padding: 10px 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .suc-dot { width:8px; height:8px; border-radius:50%; background:var(--green); box-shadow:0 0 8px var(--green); }
+  .suc-name { font-family:var(--font-mono); font-size:11px; color:var(--green); flex:1; }
+  .suc-ok { font-size:9px; font-family:var(--font-mono); color:var(--green-dim); }
+
+  .btn-register {
+    background: linear-gradient(135deg, var(--green-dim), var(--green));
+    border: none;
+    color: var(--bg);
+    font-family: var(--font-display);
+    font-size: 14px; font-weight: 900;
+    letter-spacing: 4px;
+    padding: 20px 60px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all .3s;
+    clip-path: polygon(10px 0%, 100% 0%, calc(100% - 10px) 100%, 0% 100%);
+    box-shadow: 0 0 40px rgba(0,255,136,.4);
+  }
+  .btn-register:hover { box-shadow: 0 0 60px rgba(0,255,136,.7); transform: translateY(-3px) scale(1.02); }
+
+  /* ===================== CODIGO DE CONCLUSAO ===================== */
+  .code-wrap {
+    margin: 8px 0 4px;
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+  }
+  .code-box {
+    display: inline-flex; align-items: center; gap: 14px;
+    background: rgba(0,255,136,.06);
+    border: 1px solid var(--green);
+    padding: 14px 24px;
+    box-shadow: 0 0 30px rgba(0,255,136,.25), inset 0 0 20px rgba(0,255,136,.05);
+    clip-path: polygon(10px 0%, 100% 0%, calc(100% - 10px) 100%, 0% 100%);
+  }
+  .code-label {
+    font-family: var(--font-mono); font-size: 10px;
+    color: var(--green-dim); letter-spacing: 2px;
+  }
+  .code-val {
+    font-family: var(--font-mono); font-size: 26px; font-weight: 700;
+    color: var(--green); letter-spacing: 5px;
+    text-shadow: 0 0 14px rgba(0,255,136,.6);
+    user-select: all; -webkit-user-select: all;
+  }
+  .code-copy {
+    background: transparent; border: 1px solid var(--green-dim);
+    color: var(--green); font-family: var(--font-mono);
+    font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+    padding: 8px 14px; cursor: pointer; transition: all .25s;
+  }
+  .code-copy:hover { background: rgba(0,255,136,.12); border-color: var(--green); }
+  .code-copy.done { background: var(--green); color: var(--bg); border-color: var(--green); }
+  .code-hint {
+    font-family: var(--font-mono); font-size: 12px;
+    color: var(--text-dim); letter-spacing: 1px;
+    max-width: 520px; line-height: 1.6;
+  }
+
+  /* Aviso de obrigatoriedade. Mesma receita do .alert-banner das fases, em
+     ambar e nao em vermelho: nesta tela o vermelho significaria ameaca, e ela
+     acabou de anunciar AMEACA NEUTRALIZADA em verde. Ambar le-se como
+     pendencia, igual ao .spi-badge.orange e ao .log-entry.warn. */
+  .code-obrigatorio {
+    display: flex; align-items: center; gap: 10px;
+    max-width: 560px;
+    margin: 2px auto 0;
+    padding: 11px 18px;
+    background: rgba(255,136,0,.1);
+    border: 1px solid rgba(255,136,0,.45);
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 12px; color: var(--orange);
+    letter-spacing: 1.5px; line-height: 1.5;
+    text-align: left;
+    animation: obrigPulse 2.4s ease-in-out infinite;
+  }
+  .obrig-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--orange); box-shadow: 0 0 8px var(--orange);
+    flex-shrink: 0;
+    animation: blink 1.4s infinite;
+  }
+  /* Pulsa so a sombra. O @keyframes blink do jogo derruba a opacidade para .3,
+     o que deixaria metade do tempo um texto obrigatorio quase ilegivel. */
+  @keyframes obrigPulse {
+    0%,100% { box-shadow: 0 0 12px rgba(255,136,0,.18) }
+    50%     { box-shadow: 0 0 22px rgba(255,136,0,.42) }
+  }
+  /* As outras animacoes do jogo sao decorativas; esta fica sobre texto que
+     precisa ser lido, entao respeita a preferencia do sistema. */
+  @media (prefers-reduced-motion: reduce) {
+    .code-obrigatorio, .obrig-dot { animation: none; }
+  }
+
+  /* ===================== FORMULARIO EMBUTIDO ===================== */
+  .form-embed-wrap {
+    width: 100%; max-width: 680px;
+    margin: 24px auto 40px;
+    border: 1px solid var(--green-dim);
+    background: rgba(0,20,10,.6);
+    box-shadow: 0 0 40px rgba(0,255,136,.15);
+  }
+  .form-embed-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--green-dim);
+    background: rgba(0,255,136,.05);
+    font-family: var(--font-mono); font-size: 10px;
+    color: var(--green); letter-spacing: 2px;
+  }
+  /* Altura fixa e tateada para caber o formulario inteiro sem scroll aninhado.
+     O Forms nao emite postMessage de altura, entao nao da para ajustar sozinho:
+     se voce acrescentar perguntas, aumente estes valores na mesma proporcao. */
+  .form-embed-wrap iframe {
+    display: block;
+    width: 100%; min-width: 320px;
+    min-height: 1150px; height: 1150px;
+    border: 0; background: #fff;
+  }
+  .form-fallback {
+    display: block; padding: 12px;
+    font-family: var(--font-mono); font-size: 11px;
+    color: var(--text-dim); text-align: center;
+    cursor: pointer; text-decoration: underline;
+    border-top: 1px solid rgba(0,255,136,.15);
+  }
+  .form-fallback:hover { color: var(--green); }
+
+  /* NEUTRALIZED OVERLAY */
+  .neutralized-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,255,136,.05);
+    border: 3px solid var(--green);
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0;
+    transition: opacity .5s;
+  }
+  .neutralized-overlay.show { animation: flashGreen .8s ease forwards; }
+  @keyframes flashGreen {
+    0%{opacity:0} 30%{opacity:1} 100%{opacity:0}
+  }
+
+  .error-overlay {
+    position: fixed; inset: 0;
+    background: rgba(255,34,68,.05);
+    border: 3px solid var(--red);
+    pointer-events: none;
+    z-index: 999;
+    opacity: 0;
+  }
+  .error-overlay.show { animation: flashRed .6s ease forwards; }
+  @keyframes flashRed {
+    0%{opacity:0} 30%{opacity:1} 100%{opacity:0}
+  }
+
+  /* POST IT */
+  .postit {
+    display: inline-block;
+    background: #ffd93d;
+    color: #222;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 14px 18px;
+    border-radius: 2px;
+    transform: rotate(-2deg);
+    box-shadow: 3px 3px 10px rgba(0,0,0,.4);
+    margin: 8px 0;
+    position: relative;
+  }
+  .postit::before {
+    content:'';
+    position:absolute; top:-8px; left:50%; transform:translateX(-50%);
+    width:20px; height:16px;
+    background:rgba(200,160,0,.6);
+    border-radius:2px;
+  }
+
+  /* MSG BUBBLE */
+  .chat-bubble {
+    background: rgba(0,212,255,.05);
+    border: 1px solid rgba(0,212,255,.2);
+    border-radius: 8px 8px 8px 0;
+    padding: 14px 16px;
+    margin: 8px 0;
+    max-width: 90%;
+    position: relative;
+  }
+  .chat-bubble::before {
+    content:'IT SUPPORT';
+    position:absolute; top:-18px; left:0;
+    font-family:var(--font-mono); font-size:9px;
+    color:var(--cyan); letter-spacing:2px;
+  }
+  .chat-bubble .urgent-tag {
+    display:inline-block;
+    background:rgba(255,34,68,.2); border:1px solid var(--red);
+    color:var(--red); font-family:var(--font-mono); font-size:9px;
+    padding:2px 8px; border-radius:2px; margin-bottom:8px;
+    animation:blink 1s infinite;
+  }
+
+  /* Transitions */
+  .fade-in { animation: fadeIn .5s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .alert-banner {
+    background: rgba(255,34,68,.1);
+    border: 1px solid rgba(255,34,68,.3);
+    border-radius:4px;
+    padding:10px 16px;
+    font-family:var(--font-mono); font-size:11px;
+    color:var(--red);
+    display:flex; align-items:center; gap:10px;
+    margin-bottom:12px;
+    animation:blink 2s infinite;
+  }
+  .alert-dot { width:8px;height:8px;border-radius:50%;background:var(--red);flex-shrink:0; }
+
+  .network-viz {
+    display:flex; gap:8px; align-items:center;
+    flex-wrap:wrap; margin:8px 0;
+  }
+  .net-node {
+    background:var(--panel); border:1px solid var(--border);
+    border-radius:4px; padding:6px 10px;
+    font-family:var(--font-mono); font-size:10px; color:var(--text-dim);
+  }
+  .net-node.compromised { border-color:rgba(255,34,68,.4); color:var(--red); }
+  .net-arrow { color:var(--cyan-dim); font-size:16px; }
+
+
+
+/* RESPONSIVIDADE MOBILE TOPO */
+@media(max-width:768px){
+
+  .topbar{
+    height:auto;
+    min-height:52px;
+    padding:10px;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+
+  .topbar-logo{
+    width:100%;
+    font-size:10px;
+    text-align:center;
+  }
+
+  .topbar-sep{
+    display:none;
+  }
+
+  .threat-bar-container{
+    width:100%;
+    justify-content:center;
+    flex-wrap:wrap;
+    gap:6px;
+  }
+
+  .threat-label,
+  .threat-pct,
+  .phase-counter{
+    font-size:10px;
+  }
+
+  .threat-bar{
+    width:100%;
+    max-width:180px;
+  }
+
+  .phase-counter{
+    width:100%;
+    text-align:center;
+  }
+
+  .code-box{
+    padding:12px 16px;
+    gap:10px;
+    flex-wrap:wrap;
+    justify-content:center;
+  }
+
+  .code-val{
+    font-size:20px;
+    letter-spacing:3px;
+  }
+
+  .code-hint{
+    font-size:11px;
+  }
+
+  .code-obrigatorio{
+    font-size:11px;
+    letter-spacing:1px;
+    padding:10px 14px;
+    max-width:100%;
+  }
+
+  /* o Forms fica bem mais alto em coluna estreita */
+  .form-embed-wrap{
+    max-width:100%;
+    margin-top:18px;
+  }
+
+  .form-embed-wrap iframe{
+    min-height:1250px;
+    height:1250px;
+  }
+}
+
+/* EFEITO BOTÃO INICIAR */
+#startBtn{
+  animation:pulseGlow 1.8s infinite;
+}
+
+@keyframes pulseGlow{
+  0%{
+    transform:scale(1);
+    box-shadow:0 0 0 rgba(0,212,255,0);
+  }
+  50%{
+    transform:scale(1.04);
+    box-shadow:0 0 35px rgba(0,212,255,.8);
+  }
+  100%{
+    transform:scale(1);
+    box-shadow:0 0 0 rgba(0,212,255,0);
+  }
+}
+
+
+
+#missionBtn{
+  animation:pulseMission 1.5s infinite;
+}
+
+@keyframes pulseMission{
+  0%{
+    transform:scale(1);
+    box-shadow:0 0 0 rgba(255,0,80,0);
+  }
+  50%{
+    transform:scale(1.05);
+    box-shadow:0 0 30px rgba(255,0,80,.8);
+  }
+  100%{
+    transform:scale(1);
+    box-shadow:0 0 0 rgba(255,0,80,0);
+  }
+}
+
+
+/* EFEITOS BOTÕES */
+.next-btn.show{
+  animation:pulseNext 1.5s infinite;
+}
+
+.btn-primary,
+.btn-register,
+.option-btn{
+  transition:all .25s ease;
+}
+
+.btn-primary:hover,
+.btn-register:hover,
+.option-btn:hover,
+.next-btn:hover{
+  transform:translateY(-2px) scale(1.02);
+}
+
+@keyframes pulseNext{
+  0%{
+    transform:scale(1);
+    box-shadow:0 0 0 rgba(0,255,136,0);
+  }
+  50%{
+    transform:scale(1.04);
+    box-shadow:0 0 30px rgba(0,255,136,.7);
+  }
+  100%{
+    transform:scale(1);
+    box-shadow:0 0 0 rgba(0,255,136,0);
+  }
+}
+
+
+@keyframes blinkSound{
+  0%{opacity:1;}
+  50%{opacity:.35;}
+  100%{opacity:1;}
+}
+
+</style>
+</head>
+<body>
+
+<div class="scanline"></div>
+<canvas id="particles"></canvas>
+<div class="neutralized-overlay" id="neutOverlay"></div>
+<div class="error-overlay" id="errOverlay"></div>
+
+<!-- ==================== INTRO ==================== -->
+<div class="screen active" id="screen-intro">
+  <div class="intro-bg-grid"></div>
+
+  <div class="soc-logo">
+    <div class="soc-logo-icon">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 4l5 2.18V11c0 3.5-2.33 6.79-5 7.93C9.33 17.79 7 14.5 7 11V7.18L12 5z"/>
+      </svg>
+    </div>
+    <div class="soc-logo-text">SECURITY OPERATIONS CENTER</div>
+  </div>
+
+  <div class="incident-badge">⬤ ALERTA CRÍTICO — INCIDENTE ATIVO</div>
+
+  <h1 class="intro-title">OPERAÇÃO<br><span>BLACKOUT </span></h1>
+  <div class="intro-sub"> EMPRESA COMPROMETIDA — RESPOSTA IMEDIATA NECESSÁRIA</div>
+
+  <div class="systems-status">
+    <div class="sys-item">
+      <div class="sys-dot red"></div>
+      <div class="sys-name">PRIMUS ERP</div>
+      <div class="sys-status">RISCO ELEVADO</div>
+    </div>
+    <div class="sys-item">
+      <div class="sys-dot orange"></div>
+      <div class="sys-name">MES</div>
+      <div class="sys-status orange">SUSPEITO</div>
+    </div>
+    <div class="sys-item">
+      <div class="sys-dot red"></div>
+      <div class="sys-name">METADADOS RH</div>
+      <div class="sys-status">ACESSO INDEVIDO</div>
+    </div>
+    <div class="sys-item">
+      <div class="sys-dot red"></div>
+      <div class="sys-name">SHAREPOINT</div>
+      <div class="sys-status">ARQ. ALTERADOS</div>
+    </div>
+    <div class="sys-item">
+      <div class="sys-dot red"></div>
+      <div class="sys-name">WINDOWS SVR</div>
+      <div class="sys-status">RANSOMWARE?</div>
+    </div>
+    <div class="sys-item">
+      <div class="sys-dot orange"></div>
+      <div class="sys-name">POWER BI</div>
+      <div class="sys-status orange">CRED. COMPROMETIDAS</div>
+    </div>
+  </div>
+
+  <button class="btn-primary" id="missionBtn" onclick="startMission()" style="margin-bottom:24px;">
+    <span>▶ INICIAR MISSÃO</span>
+  </button>
+
+<div id="soundWarning" style="
+  margin-top:12px;
+  color:#00ff88;
+  font-size:14px;
+  text-align:center;
+  animation:blinkSound 1.2s infinite;
+">
+  🔊 LIGUE O SOM PARA UMA EXPERIÊNCIA IMERSIVA
+</div>
+
+  <div class="terminal-text" id="termText" style="display:none"><span class="cursor-blink">█</span></div>
+
+  <button class="btn-primary" id="startBtn" style="display:none" onclick="startGame()">
+    <span>▶ INICIAR CONTENÇÃO</span>
+  </button>
+</div>
+
+<!-- ==================== GAME SCREEN ==================== -->
+<div class="screen" id="screen-game">
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-logo">🛡 OPERAÇÃO BLACKOUT</div>
+    <div class="topbar-sep"></div>
+    <div class="threat-bar-container">
+      <div class="threat-label">NÍVEL DE AMEAÇA</div>
+      <div class="threat-bar"><div class="threat-fill" id="threatFill" style="width:100%"></div></div>
+      <div class="threat-pct" id="threatPct">100%</div>
+    </div>
+    <div class="phase-counter">FASE <span id="phaseNumTop">1</span>/8</div>
+  </div>
+
+  <div class="game-layout">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sidebar-title">◉ STATUS DOS SISTEMAS</div>
+
+      <div class="sys-panel-item compromised" id="spi-primus">
+        <div class="spi-header">
+          <div class="spi-dot red" id="dot-primus"></div>
+          <div class="spi-name">PRIMUS ERP</div>
+          <div class="spi-badge red" id="badge-primus">RISCO</div>
+        </div>
+        <div class="spi-prog"><div class="spi-prog-fill" id="prog-primus" style="width:80%;background:var(--red)"></div></div>
+      </div>
+
+      <div class="sys-panel-item compromised" id="spi-mes">
+        <div class="spi-header">
+          <div class="spi-dot orange" id="dot-mes"></div>
+          <div class="spi-name">MES</div>
+          <div class="spi-badge orange" id="badge-mes">SUSPEITO</div>
+        </div>
+        <div class="spi-prog"><div class="spi-prog-fill" id="prog-mes" style="width:65%;background:var(--orange)"></div></div>
+      </div>
+
+      <div class="sys-panel-item compromised" id="spi-meta">
+        <div class="spi-header">
+          <div class="spi-dot red" id="dot-meta"></div>
+          <div class="spi-name">METADADOS RH</div>
+          <div class="spi-badge red" id="badge-meta">COMPROMETIDO</div>
+        </div>
+        <div class="spi-prog"><div class="spi-prog-fill" id="prog-meta" style="width:90%;background:var(--red)"></div></div>
+      </div>
+
+      <div class="sys-panel-item compromised" id="spi-sp">
+        <div class="spi-header">
+          <div class="spi-dot red" id="dot-sp"></div>
+          <div class="spi-name">SHAREPOINT</div>
+          <div class="spi-badge red" id="badge-sp">ALTERADO</div>
+        </div>
+        <div class="spi-prog"><div class="spi-prog-fill" id="prog-sp" style="width:75%;background:var(--red)"></div></div>
+      </div>
+
+      <div class="sys-panel-item compromised" id="spi-win">
+        <div class="spi-header">
+          <div class="spi-dot red" id="dot-win"></div>
+          <div class="spi-name">WINDOWS SVR</div>
+          <div class="spi-badge red" id="badge-win">RANSOMWARE?</div>
+        </div>
+        <div class="spi-prog"><div class="spi-prog-fill" id="prog-win" style="width:85%;background:var(--red)"></div></div>
+      </div>
+
+      <div class="sys-panel-item warning" id="spi-pbi">
+        <div class="spi-header">
+          <div class="spi-dot orange" id="dot-pbi"></div>
+          <div class="spi-name">POWER BI</div>
+          <div class="spi-badge orange" id="badge-pbi">CRED. EXP.</div>
+        </div>
+        <div class="spi-prog"><div class="spi-prog-fill" id="prog-pbi" style="width:60%;background:var(--orange)"></div></div>
+      </div>
+
+      <div class="sidebar-title">◉ LOG DO SOC</div>
+      <div class="log-box" id="logBox">
+        <div class="log-entry error">[ALERTA] Brute force detectado — Primus</div>
+        <div class="log-entry warn">[WARN] Login múltiplo — MES</div>
+        <div class="log-entry error">[CRÍTICO] Credenciais expostas — SharePoint</div>
+        <div class="log-entry warn">[WARN] Rede não autorizada detectada</div>
+        <div class="log-entry error">[ALERTA] Estação sem bloqueio — Eng.</div>
+        <div class="log-entry warn">[WARN] QR Code suspeito — MES terminal</div>
+      </div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main-content" id="mainContent">
+      <div class="progress-bar">
+        <div class="progress-label">PROGRESSO DA MISSÃO</div>
+        <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+        <div class="progress-pct" id="progressPct">0%</div>
+      </div>
+      <div id="phaseContainer"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== SUCCESS SCREEN ==================== -->
+<div class="screen" id="screen-success">
+  <div class="success-icon">
+    <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+  </div>
+  <div class="success-badge">◉ MISSÃO CONCLUÍDA</div>
+  <h1 class="success-title">AMEAÇA<br><span>NEUTRALIZADA</span></h1>
+  <div class="success-sub">TODOS OS SISTEMAS RESTAURADOS</div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-num" id="statPhases">8</div>
+      <div class="stat-label">FASES CONCLUÍDAS</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num" id="statTime">—</div>
+      <div class="stat-label">TEMPO DE MISSÃO</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">0%</div>
+      <div class="stat-label">NÍVEL DE AMEAÇA</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">6/6</div>
+      <div class="stat-label">SISTEMAS SEGUROS</div>
+    </div>
+  </div>
+
+  <div class="success-sys-grid">
+    <div class="success-sys-item"><div class="suc-dot"></div><div class="suc-name">PRIMUS ERP</div><div class="suc-ok">SEGURO</div></div>
+    <div class="success-sys-item"><div class="suc-dot"></div><div class="suc-name">MES</div><div class="suc-ok">SEGURO</div></div>
+    <div class="success-sys-item"><div class="suc-dot"></div><div class="suc-name">METADADOS RH</div><div class="suc-ok">SEGURO</div></div>
+    <div class="success-sys-item"><div class="suc-dot"></div><div class="suc-name">SHAREPOINT</div><div class="suc-ok">SEGURO</div></div>
+    <div class="success-sys-item"><div class="suc-dot"></div><div class="suc-name">WINDOWS SVR</div><div class="suc-ok">SEGURO</div></div>
+    <div class="success-sys-item"><div class="suc-dot"></div><div class="suc-name">POWER BI</div><div class="suc-ok">SEGURO</div></div>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-box">
+      <span class="code-label">CÓDIGO DE CONCLUSÃO</span>
+      <span class="code-val" id="completionCode">—</span>
+      <button class="code-copy" id="codeCopyBtn" onclick="copiarCodigo()">copiar</button>
+    </div>
+    <div class="code-hint">
+      Informe este código no formulário abaixo. Ele comprova que você concluiu a missão.
+    </div>
+    <div class="code-obrigatorio">
+      <div class="obrig-dot"></div>
+      PREENCHIMENTO OBRIGATÓRIO &mdash; SEM O CÓDIGO NO FORMULÁRIO, VOCÊ NÃO ENTRA NO SORTEIO
+    </div>
+  </div>
+
+  <div class="form-embed-wrap">
+    <div class="form-embed-bar">
+      <div class="suc-dot"></div>CANAL SEGURO · REGISTRO DE PARTICIPAÇÃO
+    </div>
+    <iframe id="formFrame" title="Registro de participação e sorteio de brindes" loading="lazy"></iframe>
+    <a class="form-fallback" onclick="openForm()">O formulário não carregou? Abrir em nova aba ▸</a>
+  </div>
+</div>
+
+<script>
+// ==================== PARTICLES ====================
+(function(){
+  const canvas = document.getElementById('particles');
+  const ctx = canvas.getContext('2d');
+  let W, H, particles = [];
+  function resize(){ W=canvas.width=window.innerWidth; H=canvas.height=window.innerHeight; }
+  resize();
+  window.addEventListener('resize', resize);
+  for(let i=0;i<60;i++){
+    particles.push({
+      x: Math.random()*9999,
+      y: Math.random()*9999,
+      vx: (Math.random()-.5)*.3,
+      vy: (Math.random()-.5)*.3,
+      size: Math.random()*1.5+.5,
+      alpha: Math.random()*.4+.1
+    });
+  }
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    particles.forEach(p=>{
+      p.x+=p.vx; p.y+=p.vy;
+      if(p.x<0)p.x=W; if(p.x>W)p.x=0;
+      if(p.y<0)p.y=H; if(p.y>H)p.y=0;
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.size,0,Math.PI*2);
+      ctx.fillStyle=`rgba(0,212,255,${p.alpha})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+
+
+
+// ==================== SISTEMA DE ÁUDIO ====================
+// bgMusic      -> música ambiente principal
+// Botões principais também utilizam clickSound para reforçar interação
+// clickSound   -> clique em botões e respostas
+// successSound -> resposta correta
+// errorSound   -> resposta incorreta
+// phaseSound   -> avanço de fase
+// victorySound -> conclusão do jogo
+// typingSound  -> efeito de terminal digitando
+
+
+// ==================== TERMINAL TYPING ====================
+let startTime = null;
+
+const introLines = [
+  '> Conectando ao SOC corporativo...',
+  '> Analisando vetores de ataque...',
+  '> ALERTA: 6 sistemas comprometidos',
+  '> Convocando analista de campo...',
+  '> Você foi selecionado para esta missão.'
+];
+
+function startMission(){
+
+  const clickSound = document.getElementById('clickSound');
+
+  if(clickSound){
+    clickSound.currentTime = 0;
+    clickSound.play().catch(()=>{});
+  }
+
+  const missionBtn = document.getElementById('missionBtn');
+  const term = document.getElementById('termText');
+
+  missionBtn.style.display = 'none';
+  term.style.display = 'block';
+
+  const bgMusic = document.getElementById('bgMusic');
+
+  if(bgMusic){
+    bgMusic.volume = 0.12;
+    bgMusic.play().catch(()=>{});
+  }
+
+  const typingSound = document.getElementById('typingSound');
+
+  if(typingSound){
+    typingSound.volume = 0.35;
+    typingSound.currentTime = 0;
+    typingSound.play().catch(()=>{});
+  }
+
+  let li = 0;
+  let ci = 0;
+
+  function type(){
+
+    if(li >= introLines.length){
+
+      term.innerHTML = introLines[introLines.length-1] + ' <span class="cursor-blink">█</span>';
+
+      if(typingSound){
+        typingSound.pause();
+        typingSound.currentTime = 0;
+      }
+
+      document.getElementById('startBtn').style.display = 'inline-flex';
+      return;
+    }
+
+    const line = introLines[li];
+
+    if(ci <= line.length){
+
+      term.innerHTML = line.substring(0,ci) + '<span class="cursor-blink">█</span>';
+      ci++;
+
+      setTimeout(type, 40);
+
+    } else {
+
+      li++;
+      ci = 0;
+
+      setTimeout(type, 500);
+    }
+  }
+
+  type();
+}
+
+
+// ==================== PHASES DATA ====================
+const phases = [
+  {
+    id:1,
+    tag:'PRIMUS ERP — BRUTE FORCE',
+    title:'Senhas Fracas',
+    context:'O SOC detectou múltiplas tentativas de brute force utilizando senhas fracas em acessos ao Primus ERP e SharePoint. Os logs registram mais de 2.400 tentativas em 3 minutos.',
+    visual: `
+      <div class="visual-title">▶ LOG DE AUTENTICAÇÃO — PRIMUS ERP</div>
+      <div class="alert-banner"><div class="alert-dot"></div>BRUTE FORCE DETECTADO — 2.4K TENTATIVAS/3MIN</div>
+      <div class="log-line err">FAILED LOGIN → user: jose.silva | pwd: jose123 [ATTEMPT 847]</div>
+      <div class="log-line err">FAILED LOGIN → user: jose.silva | pwd: 123456 [ATTEMPT 848]</div>
+      <div class="log-line err">FAILED LOGIN → user: jose.silva | pwd: empresa2024 [ATTEMPT 849]</div>
+      <div class="log-line err">FAILED LOGIN → user: jose.silva | pwd: abc123 [ATTEMPT 850]</div>
+      <div class="log-line warn">⚠ ACCOUNT LOCKOUT THRESHOLD APPROACHING...</div>
+    `,
+    question:'Qual senha oferece maior segurança para o acesso ao Primus ERP?',
+    options:[
+      '1415',
+      'jose123456',
+      'Primus@2024',
+      'Gx#9mK!2vR@qL4nP'
+      
+    ],
+    correct:3,
+    feedbackOk:'Correto! A senha longa, complexa e aleatória com letras maiúsculas, minúsculas, números e símbolos é exponencialmente mais difícil de quebrar por ataques automatizados. Uma senha como essa levaria séculos para ser descoberta por brute force.',
+    feedbackErr:'Senha fraca! Senhas curtas, previsíveis ou baseadas em nomes/datas são as primeiras a serem testadas por ferramentas de brute force. O ataque ao Primus utilizou wordlists com milhões de combinações comuns. Use senhas longas, complexas e únicas para cada sistema.',
+    system:'primus',
+    logSuccess:'[SOC] Brute force bloqueado — Primus ERP protegido',
+    systemUpdate:{ id:'spi-primus', dotId:'dot-primus', badgeId:'badge-primus', progId:'prog-primus', status:'warning', dot:'orange', badge:'MONIT.', badgeClass:'orange', prog:'30%', color:'var(--orange)' }
+  },
+  {
+    id:2,
+    tag:'PRIMUS / MES — AUDITORIA',
+    title:'Compartilhamento de Senhas',
+    context:'O SOC identificou que credenciais do Primus ERP foram compartilhadas entre colaboradores da área operacional. Múltiplos logins simultâneos do mesmo usuário foram detectados em locais distintos.',
+    visual: `
+      <div class="visual-title">▶ AUDITORIA DE ACESSO — SESSÕES SIMULTÂNEAS</div>
+      <div class="alert-banner"><div class="alert-dot"></div>ALERTA: MESMO USUÁRIO — ACESSOS SIMULTÂNEOS DE LOCAIS DISTINTOS</div>
+      <div class="log-line em">SESSION_1 → user: embalagem1.evviva| IP: 192.168.1.45 | LOCAL: Produção</div>
+      <div class="log-line em">SESSION_2 → user: embalagem1.evviva | IP: 192.168.3.12 | LOCAL: Pintura</div>
+      <div class="log-line em">SESSION_3 → user: embalagem1.evviva | IP: 10.0.0.87  | LOCAL: Escritório Corporativo</div>
+      <div class="log-line warn">⚠ RASTREABILIDADE: IMPOSSÍVEL — QUEM REALIZOU QUAL AÇÃO?</div>
+      <div class="log-line warn">⚠ AUDITORIA COMPROMETIDA — RESPONSABILIDADE INDETERMINADA</div>
+    `,
+    question:'Qual o principal risco de compartilhar senha com colegas de trabalho?',
+    options:[
+      'Não há risco real, desde que seja com pessoas de confiança',
+      'Risco de o colega esquecer a senha',
+      'Perda de rastreabilidade e aumento do risco de acesso indevido',
+      'Apenas reduz a produtividade da equipe'
+    ],
+    correct:2,
+    feedbackOk:'Exato! Ao compartilhar credenciais, torna-se impossível rastrear quem realizou cada ação no sistema. Em caso de incidente, fraude ou alteração indevida, não há como responsabilizar o autor. Cada colaborador deve ter acesso exclusivo e intransferível.',
+    feedbackErr:'Incorreto. Compartilhar credenciais é uma das práticas mais críticas em segurança da informação. Ela elimina a rastreabilidade das ações, impossibilita auditorias, cria responsabilidade difusa e pode facilitar acessos indevidos por pessoas não autorizadas.',
+    system:'mes',
+    logSuccess:'[SOC] Auditoria restabelecida — MES normalizado',
+    systemUpdate:{ id:'spi-mes', dotId:'dot-mes', badgeId:'badge-mes', progId:'prog-mes', status:'warning', dot:'orange', badge:'MONIT.', badgeClass:'orange', prog:'25%', color:'var(--orange)' }
+  },
+  {
+    id:3,
+    tag:'METADADOS RH — CREDENCIAIS EXPOSTAS',
+    title:'Armazenamento Inseguro de Credenciais',
+    context:'O SOC encontrou credenciais anotadas em papel próximas a estações de trabalho e uma planilha não protegida com senhas de sistemas críticos, incluindo o Metadados RH.',
+    visual: `
+      <div class="visual-title">▶ EVIDÊNCIAS COLETADAS PELO SOC</div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;margin:8px 0">
+        <div>
+          <div class="postit">
+            Primus: JOAO<br>
+            Senha: 1415<br>
+            Metadados: vanessa<br>
+            senha: Bertolini@2026
+          </div>
+        </div>
+        <div style="flex:1;min-width:200px">
+          <div class="log-line em">📄 senhas_sistemas.xlsx — SEM PROTEÇÃO</div>
+          <div class="log-line err">  ├─ Primus ERP → admin / Empresa@123</div>
+          <div class="log-line err">  ├─ Metadados → rh_user / rh2024</div>
+          <div class="log-line err">  └─ VPN → vpn_corp / 12345678</div>
+          <div class="log-line warn">⚠ ARQUIVO ACESSADO POR 3 USUÁRIOS EXTERNOS</div>
+        </div>
+      </div>
+    `,
+    question:'Qual prática é mais segura para armazenar credenciais corporativas?',
+    options:[
+      'Anotar em papel e guardar na gaveta',
+      'Memorizar ou usar métodos aprovados pela empresa',
+      'Salvar em planilha no computador sem senha',      
+      'Enviar para o próprio e-mail como lembrete'
+    ],
+    correct:1,
+    feedbackOk:'Correto! Credenciais nunca devem ser anotadas fisicamente, armazenadas em arquivos desprotegidos ou transmitidas por canais inseguros. Utilize os métodos aprovados pela empresa e, se necessário, um gerenciador de senhas corporativo homologado.',
+    feedbackErr:'Prática insegura! Qualquer registro físico ou digital desprotegido de credenciais é um risco crítico. Um visitante, prestador de serviços ou pessoa mal-intencionada pode facilmente acessar essas informações e comprometer todos os sistemas listados.',
+    system:'meta',
+    logSuccess:'[SOC] Credenciais protegidas — Metadados RH seguro',
+    systemUpdate:{ id:'spi-meta', dotId:'dot-meta', badgeId:'badge-meta', progId:'prog-meta', status:'secure', dot:'green', badge:'SEGURO', badgeClass:'green', prog:'5%', color:'var(--green)' }
+  },
+  {
+    id:4,
+    tag:'FIREWALL — BYPASS DETECTADO',
+    title:'Burlar Controles de Segurança',
+    context:'O SOC detectou que um equipamento corporativo foi conectado a uma rede externa via roteamento 4G pessoal, contornando o firewall e os controles de segurança da empresa.',
+    visual: `
+      <div class="visual-title">▶ DIAGRAMA DE REDE — ANOMALIA DETECTADA</div>
+      <div class="network-viz">
+        <div class="net-node">NOTEBOOK<br>CORPORATIVO</div>
+        <div class="net-arrow">⟶</div>
+        <div class="net-node compromised">HOTSPOT 4G<br>PESSOAL ⚠</div>
+        <div class="net-arrow">⟶</div>
+        <div class="net-node compromised">INTERNET<br>SEM PROTEÇÃO</div>
+      </div>
+      <div class="log-line err">ALERTA: Tráfego detectado em interface não monitorada</div>
+      <div class="log-line err">FIREWALL CORPORATIVO: BYPASSADO</div>
+      <div class="log-line err">DLP: INATIVO — dados corporativos sem proteção</div>
+      <div class="log-line warn">⚠ Antivírus corporativo: atualizações bloqueadas</div>
+      <div class="log-line warn">⚠ SIEM: equipamento fora de visibilidade</div>
+    `,
+    question:'Qual o principal risco de usar roteamento 4G pessoal para burlar controles corporativos?',
+    options:[
+      'Perda de proteção, monitoramento e aumento do risco de comprometimento',
+      'Apenas deixa a internet mais lenta',     
+      'O risco é mínimo se o antivírus estiver ativo',
+      'Só é perigoso em redes públicas como Wi-Fi de aeroportos'
+    ],
+    correct:0,
+    feedbackOk:'Correto! Ao contornar a rede corporativa, o equipamento perde toda a proteção do firewall, DLP, proxy seguro e monitoramento do SOC. O dispositivo fica exposto a ameaças externas sem qualquer camada de defesa corporativa, podendo ser infectado e depois comprometer a rede interna.',
+    feedbackErr:'Incorreto. Usar roteamento externo não é apenas uma questão de velocidade. O equipamento perde a proteção do firewall, proxy, DLP e monitoramento do SOC. Qualquer malware instalado nessa condição pode, ao retornar à rede corporativa, infectar sistemas críticos como Primus e MES.',
+    system:'win',
+    logSuccess:'[SOC] Conexão não autorizada bloqueada — rede restaurada',
+    systemUpdate:{ id:'spi-win', dotId:'dot-win', badgeId:'badge-win', progId:'prog-win', status:'warning', dot:'orange', badge:'MONIT.', badgeClass:'orange', prog:'20%', color:'var(--orange)' }
+  },
+  {
+    id:5,
+    tag:'SHAREPOINT — ACESSO INDEVIDO',
+    title:'Computador Desbloqueado',
+    context:'O SOC detectou acesso indevido a documentos confidenciais do SharePoint e arquivos de projetos do SolidWorks e AutoCAD em uma estação que foi deixada desbloqueada.',
+    visual: `
+      <div class="visual-title">▶ LOG DE ACESSO — ESTAÇÃO SEM BLOQUEIO</div>
+      <div class="alert-banner"><div class="alert-dot"></div>SESSÃO ATIVA SEM SUPERVISÃO — USUÁRIO AUSENTE HÁ 18 MINUTOS</div>
+      <div class="log-line err">ACESSO: /SharePoint/Contratos/2024_Confidencial.xlsx [READ+COPY]</div>
+      <div class="log-line err">ACESSO: /SolidWorks/Projetos/Produto_X_v3.sldprt [READ]</div>
+      <div class="log-line err">ACESSO: /AutoCAD/Plantas/Layout_Fabrica_2024.dwg [READ+EXPORT]</div>
+      <div class="log-line err">EMAIL ENVIADO: 3 anexos → destinatário externo não cadastrado</div>
+      <div class="log-line warn">⚠ USUÁRIO LEGÍTIMO: sem registro de ação durante período</div>
+      <div class="log-line warn">⚠ RESPONSABILIDADE: atribuída ao usuário da sessão</div>
+    `,
+    question:'O que deve ser feito obrigatoriamente ao se afastar da estação de trabalho?',
+    options:[
+      'Não é necessário, o escritório é seguro',
+      'Apenas minimizar as janelas abertas',
+      'Bloquear o computador sempre que se afastar, mesmo por poucos minutos',
+      'Desligar o monitor para economizar energia'
+    ],
+    correct:2,
+    feedbackOk:'Correto! Bloquear a estação ao se afastar é uma prática fundamental. Use Win+L (Windows) para bloquear imediatamente. Em segundos, qualquer pessoa pode acessar arquivos, enviar e-mails ou executar ações em seu nome. A responsabilidade legal recai sobre o dono da sessão.',
+    feedbackErr:'Incorreto. Uma estação desbloqueada é uma porta aberta para acesso indevido. Mesmo em ambientes internos, ex-colaboradores, visitantes ou prestadores de serviço podem se aproveitar da oportunidade. As ações realizadas ficam registradas em seu nome.',
+    system:'sp',
+    logSuccess:'[SOC] Estação bloqueada — acesso indevido encerrado',
+    systemUpdate:{ id:'spi-sp', dotId:'dot-sp', badgeId:'badge-sp', progId:'prog-sp', status:'secure', dot:'green', badge:'SEGURO', badgeClass:'green', prog:'5%', color:'var(--green)' }
+  },
+  {
+    id:6,
+    tag:'MES — QR CODE MALICIOSO',
+    title:'QR Code Suspeito',
+    context:'Um QR Code impresso foi encontrado colado próximo a um terminal operacional do MES, prometendo acesso rápido aos indicadores de produção e relatórios do Power BI.',
+    visual: `
+      <div class="visual-title">▶ EVIDÊNCIA — QR CODE ENCONTRADO NO TERMINAL</div>
+      <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;margin:8px 0">
+        <div class="qr-mock">
+          <svg class="qr-svg" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg" style="display:block">
+            <rect width="21" height="21" fill="white"/>
+            <rect x="1" y="1" width="7" height="7" fill="black"/>
+            <rect x="2" y="2" width="5" height="5" fill="white"/>
+            <rect x="3" y="3" width="3" height="3" fill="black"/>
+            <rect x="13" y="1" width="7" height="7" fill="black"/>
+            <rect x="14" y="2" width="5" height="5" fill="white"/>
+            <rect x="15" y="3" width="3" height="3" fill="black"/>
+            <rect x="1" y="13" width="7" height="7" fill="black"/>
+            <rect x="2" y="14" width="5" height="5" fill="white"/>
+            <rect x="3" y="15" width="3" height="3" fill="black"/>
+            <rect x="9" y="1" width="1" height="1" fill="black"/>
+            <rect x="11" y="1" width="1" height="1" fill="black"/>
+            <rect x="9" y="3" width="3" height="1" fill="black"/>
+            <rect x="9" y="5" width="1" height="3" fill="black"/>
+            <rect x="11" y="5" width="1" height="1" fill="black"/>
+            <rect x="13" y="9" width="7" height="1" fill="black"/>
+            <rect x="9" y="9" width="3" height="3" fill="black"/>
+            <rect x="1" y="9" width="5" height="1" fill="black"/>
+            <rect x="1" y="11" width="3" height="3" fill="black"/>
+            <rect x="13" y="11" width="1" height="5" fill="black"/>
+            <rect x="15" y="11" width="3" height="1" fill="black"/>
+            <rect x="17" y="13" width="3" height="1" fill="black"/>
+            <rect x="15" y="15" width="1" height="3" fill="black"/>
+            <rect x="17" y="15" width="3" height="3" fill="black"/>
+            <rect x="9" y="13" width="3" height="1" fill="black"/>
+            <rect x="5" y="13" width="1" height="1" fill="black"/>
+            <rect x="7" y="11" width="1" height="3" fill="black"/>
+            <rect x="5" y="15" width="3" height="3" fill="black"/>
+            <rect x="9" y="15" width="1" height="3" fill="black"/>
+            <rect x="11" y="17" width="1" height="1" fill="black"/>
+          </svg>
+        </div>
+        <div style="flex:1;min-width:180px">
+          <div class="log-line em">📋 Papel colado no terminal MES #04</div>
+          <div class="log-line">Texto impresso: "Acesse seus KPIs"</div>
+          <div class="log-line">"Relatórios Power BI — Scan Rápido"</div>
+          <div class="log-line err">DESTINO REAL: hxxp://mes-corporativo.xyz/login</div>
+          <div class="log-line err">⚠ DOMÍNIO NÃO CORPORATIVO — PHISHING</div>
+          <div class="log-line err">⚠ CAPTURA DE CREDENCIAIS DETECTADA</div>
+        </div>
+      </div>
+    `,
+    question:'O que deve ser feito ao encontrar este QR Code próximo ao terminal do MES?',
+    options:[
+      'Escanear rapidamente para ver para onde direciona',
+      'Escanear e inserir as credenciais apenas se o site parecer legítimo',
+      'Ignorar e continuar trabalhando normalmente',
+      'Não escanear, reportar ao time de segurança e validar a origem do QR Code'
+    ],
+    correct:3,
+    feedbackOk:'Correto! QR Codes são vetores cada vez mais utilizados em ataques de phishing físico. Nunca escaneie QR Codes de origem desconhecida, especialmente em ambientes corporativos. Reporte imediatamente ao SOC para análise e remoção.',
+    feedbackErr:'Atenção! QR Codes maliciosos podem redirecionar para sites de phishing idênticos aos sistemas corporativos. Ao inserir suas credenciais, elas são capturadas pelos atacantes que podem acessar todos os sistemas que você tem permissão. Nunca escaneie sem validar a origem.',
+    system:'mes',
+    logSuccess:'[SOC] QR Code malicioso removido — MES protegido',
+    systemUpdate:{ id:'spi-mes', dotId:'dot-mes', badgeId:'badge-mes', progId:'prog-mes', status:'secure', dot:'green', badge:'SEGURO', badgeClass:'green', prog:'5%', color:'var(--green)' }
+  },
+  {
+    id:7,
+    tag:'SOC — ENGENHARIA SOCIAL',
+    title:'Engenharia Social',
+    context:'Um falso analista de suporte de TI entrou em contato via mensagem solicitando acesso urgente ao sistema Metadados RH e credenciais do SharePoint para uma "atualização crítica de emergência".',
+    visual: `
+      <div class="visual-title">▶ MENSAGEM RECEBIDA — CANAL CORPORATIVO</div>
+      <div class="chat-bubble">
+        <div class="urgent-tag">⚠ URGENTE</div>
+        <div style="font-size:13px;color:var(--text);line-height:1.6">
+          Bom dia! Sou <strong>Carlos Lima</strong>, analista de suporte TI.<br>
+          Estamos realizando uma atualização emergencial no Metadados RH e precisamos validar seu acesso.<br><br>
+          Por favor, me informe seu <strong>usuário e senha</strong> do Metadados e SharePoint para não interromper suas permissões.<br><br>
+          <span style="color:var(--red);font-size:11px">⏱ URGENTE: temos 15 minutos antes do rollout</span>
+        </div>
+      </div>
+      <div class="log-line warn">⚠ SOC: Usuário "Carlos Lima" não consta no AD</div>
+      <div class="log-line err">⚠ SOC: Nenhuma atualização agendada para hoje</div>
+      <div class="log-line err">⚠ ALERTA: Técnica clássica de urgência + autoridade</div>
+    `,
+    question:'O que deve ser feito ao receber esta solicitação de suporte?',
+    options:[
+      'Fornecer as credenciais rapidamente para não atrasar o processo',
+      'Enviar apenas a senha atual e trocar depois',
+      'Verificar apenas se o nome da pessoa está correto',      
+      'Validar a identidade do solicitante com o canal oficial e jamais fornecer senhas'
+    ],
+    correct:3,
+    feedbackOk:'Correto! Engenharia social explora urgência e autoridade para manipular pessoas. O time de TI legítimo NUNCA solicita senhas por mensagem, e-mail ou telefone. Sempre valide identidades pelo canal oficial e reporte tentativas suspeitas ao SOC imediatamente.',
+    feedbackErr:'Atenção! Esta é uma tentativa clássica de engenharia social. Atacantes criam senso de urgência e se passam por figuras de autoridade para obter credenciais. Equipes de TI legítimas NUNCA solicitam senhas. Ao fornecer credenciais, você entregaria acesso a todos os sistemas.',
+    system:'meta',
+    logSuccess:'[SOC] Tentativa de engenharia social bloqueada',
+    systemUpdate:{ id:'spi-primus', dotId:'dot-primus', badgeId:'badge-primus', progId:'prog-primus', status:'secure', dot:'green', badge:'SEGURO', badgeClass:'green', prog:'5%', color:'var(--green)' }
+  },
+  {
+    id:8,
+    tag:'SHAREPOINT / POWER BI — ACESSO COMPROMETIDO',
+    title:'Autenticação Multifator (MFA)',
+    context:'Credenciais corporativas comprometidas tentaram acessar o SharePoint e o Power BI de um IP localizado em outro país. A ausência de MFA permitiu que o atacante chegasse próximo ao acesso total.',
+    visual: `
+      <div class="visual-title">▶ TENTATIVA DE ACESSO — CREDENCIAIS COMPROMETIDAS</div>
+      <div class="alert-banner"><div class="alert-dot"></div>ACESSO TENTADO: IP 185.220.101.xx — RÚSSIA — 03:47 LOCAL</div>
+      <div class="log-line em">AUTH REQUEST: ana.costa@empresa.com</div>
+      <div class="log-line err">PASSWORD: ✓ VÁLIDA (credencial vazada em breach externo)</div>
+      <div class="log-line err">MFA: ✗ NÃO CONFIGURADO — ACESSO DIRETO AO SHAREPOINT</div>
+      <div class="log-line err">SHAREPOINT: DADOS ACESSADOS SEM MFA</div>
+      <div class="log-line err">POWER BI: DASHBOARDS SENSÍVEIS ACESSADOS</div>
+      <div class="log-line warn">⚠ COM MFA: ACESSO SERIA BLOQUEADO AUTOMATICAMENTE</div>
+    `,
+    question:'Qual medida teria impedido este acesso indevido mesmo com a senha comprometida?',
+    options:[
+      'Trocar a senha a cada 30 dias',
+      'Usar uma senha mais longa',
+      'Habilitar MFA — Autenticação Multifator',
+      'Bloquear acessos fora do horário comercial'
+    ],
+    correct:2,
+    feedbackOk:'Correto! O MFA (Autenticação Multifator) é a medida mais eficaz contra credenciais comprometidas. Mesmo que o atacante tenha a senha correta, sem o segundo fator (código do celular, app autenticador) o acesso é bloqueado. Habilite o MFA em todos os sistemas corporativos.',
+    feedbackErr:'Incorreto. Mesmo com senha complexa, credenciais podem ser expostas em vazamentos externos. O MFA garante que, mesmo com a senha correta, o atacante ainda precise de um segundo fator que só você possui — tornando o acesso indevido praticamente impossível.',
+    system:'pbi',
+    logSuccess:'[SOC] MFA ativado — SharePoint e Power BI protegidos',
+    systemUpdate:{ id:'spi-pbi', dotId:'dot-pbi', badgeId:'badge-pbi', progId:'prog-pbi', status:'secure', dot:'green', badge:'SEGURO', badgeClass:'green', prog:'5%', color:'var(--green)' }
+  }
+];
+
+
+
+
+
+
+// ==================== GAME STATE ====================
+// Controle global do estado do jogo
+// currentPhase = fase atual
+// answered = controla múltiplos cliques
+let currentPhase = 0;
+let answered = false;
+
+function startGame(){
+
+  const clickSound = document.getElementById('clickSound');
+
+  if(clickSound){
+    clickSound.currentTime = 0;
+    clickSound.play().catch(()=>{});
+  }
+
+  const bgMusic = document.getElementById('bgMusic');
+
+  if(bgMusic){
+    bgMusic.volume = 0.12;
+    bgMusic.play().catch(()=>{});
+  }
+
+  document.getElementById('screen-intro').classList.remove('active');
+  document.getElementById('screen-game').classList.add('active');
+  startTime = Date.now();
+  loadPhase(0);
+}
+
+// Carrega dinamicamente uma nova fase
+function loadPhase(idx){
+  currentPhase = idx;
+  answered = false;
+  const phase = phases[idx];
+  updateProgress(idx);
+  document.getElementById('phaseNumTop').textContent = idx+1;
+
+  const container = document.getElementById('phaseContainer');
+  container.innerHTML = '';
+
+  const div = document.createElement('div');
+  div.className = 'phase-panel fade-in';
+  div.innerHTML = `
+    <div class="phase-header">
+      <div class="phase-num">0${phase.id}</div>
+      <div class="phase-info">
+        <div class="phase-tag">▶ ${phase.tag}</div>
+        <div class="phase-title-text">${phase.title}</div>
+      </div>
+    </div>
+    <div class="phase-body">
+      <div class="context-box">
+        <div class="context-label">◉ CONTEXTO DO INCIDENTE</div>
+        <div class="context-text">${phase.context}</div>
+      </div>
+      <div class="visual-element">${phase.visual}</div>
+      <div class="question-label">◉ DECISÃO CRÍTICA</div>
+      <div class="question-text">${phase.question}</div>
+      <div class="options-grid" id="optionsGrid">
+        ${phase.options.map((o,i)=>`
+          <button class="option-btn" onclick="selectAnswer(${i})" id="opt${i}">
+            <div class="opt-letter">${String.fromCharCode(65+i)}</div>
+            ${o}
+          </button>
+        `).join('')}
+      </div>
+      <div class="feedback-box" id="feedbackBox">
+        <div class="feedback-title" id="feedbackTitle"></div>
+        <div class="feedback-text" id="feedbackText"></div>
+      </div>
+      <button class="next-btn" id="nextBtn" onclick="nextPhase()">
+        PRÓXIMA FASE ▶
+      </button>
+    </div>
+  `;
+  container.appendChild(div);
+  document.getElementById('mainContent').scrollTop = 0;
+}
+
+// Processa resposta do usuário e valida acerto/erro
+function selectAnswer(idx){
+
+  // Sem clickSound aqui de proposito: click.wav dura 1,10s e cobria 82% do som
+  // de resultado, que toca no mesmo instante. O veredito (success/error) ja da
+  // o retorno sonoro da acao; o clique por cima so embolava a mixagem.
+  // O clickSound segue ativo nos demais botoes (iniciar missao, proxima fase).
+
+  if(answered) return;
+  const phase = phases[currentPhase];
+  answered = true;
+
+  const opts = document.querySelectorAll('.option-btn');
+  opts.forEach(o=>o.classList.add('disabled'));
+
+  const fb = document.getElementById('feedbackBox');
+  const fbTitle = document.getElementById('feedbackTitle');
+  const fbText = document.getElementById('feedbackText');
+  const nextBtn = document.getElementById('nextBtn');
+
+  if(idx === phase.correct){
+    opts[idx].classList.add('correct');
+
+    fb.className = 'feedback-box';
+    fb.classList.add('show');
+    fb.classList.add('success');
+    const successSound = document.getElementById('successSound');
+
+    if(successSound){
+      // Explicito para ficar par a par com o som de erro — ver nota la embaixo
+      successSound.volume = 1.0;
+      successSound.currentTime = 0;
+      successSound.play().catch(()=>{});
+    }
+
+    fbTitle.textContent = '✓ AMEAÇA NEUTRALIZADA';
+    fbText.textContent = phase.feedbackOk;
+    // Aguarda 3 segundos antes de liberar próxima fase
+    setTimeout(()=>{
+      nextBtn.classList.add('show');
+
+      setTimeout(()=>{
+        nextBtn.scrollIntoView({
+          behavior:'smooth',
+          block:'center'
+        });
+      },200);
+
+    },3000);
+
+    setTimeout(()=>{
+      fb.scrollIntoView({
+        behavior:'smooth',
+        block:'center'
+      });
+    },150);
+    flashOverlay('neut');
+    updateSystemStatus(phase.systemUpdate);
+    addLog(phase.logSuccess, 'success');
+    updateThreat(currentPhase+1);
+  } else {
+
+    opts.forEach(o=>{
+      o.classList.remove('incorrect');
+    });
+
+    opts[idx].classList.add('incorrect');
+
+    fb.className = 'feedback-box';
+    fb.classList.add('show');
+    fb.classList.add('error');
+
+    const errorSound = document.getElementById('errorSound');
+
+    if(errorSound){
+
+      // Mesmo volume do acerto. Estava em 0.45 e, somado ao clickSound que
+      // tocava junto a 1.0, o erro saia como o som mais fraco da tela — dava a
+      // impressao de que nao tocava. Ele tocava; ninguem ouvia.
+      errorSound.volume = 1.0;
+      errorSound.currentTime = 0;
+      errorSound.play().catch(()=>{});
+    }
+
+    fbTitle.textContent = '✗ RESPOSTA INCORRETA — AMEAÇA PERSISTE';
+    fbText.textContent = phase.feedbackErr;
+
+    flashOverlay('err');
+
+    setTimeout(()=>{
+      fb.scrollIntoView({
+        behavior:'smooth',
+        block:'center'
+      });
+    },150);
+
+    addLog(
+      `[FALHA] Decisão incorreta — ameaça em ${phase.system.toUpperCase()} persiste`,
+      'error'
+    );
+
+    answered = false;
+
+    opts.forEach((o,i)=>{
+      o.classList.remove('disabled');
+
+      if(i === idx){
+        o.style.opacity = '.5';
+        o.style.pointerEvents = 'none';
+      }
+    });
+  }
+}
+
+// Avança para a próxima fase
+function nextPhase(){
+
+  const phaseSound = document.getElementById('phaseSound');
+
+  if(phaseSound){
+    phaseSound.currentTime = 0;
+    phaseSound.play().catch(()=>{});
+  }
+
+  if(currentPhase >= phases.length -1){
+    showSuccess();
+    return;
+  }
+  loadPhase(currentPhase+1);
+  document.getElementById('screen-game').scrollTop = 0;
+}
+
+// Atualiza barra de progresso da missão
+function updateProgress(idx){
+  const pct = Math.round((idx / phases.length) * 100);
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressPct').textContent = pct + '%';
+}
+
+// Atualiza percentual do nível de ameaça
+function updateThreat(completed){
+  const remaining = Math.round(100 - (completed / phases.length) * 100);
+  document.getElementById('threatFill').style.width = remaining + '%';
+  document.getElementById('threatPct').textContent = remaining + '%';
+  if(remaining <= 50) document.getElementById('threatFill').style.background = 'linear-gradient(90deg,var(--orange),var(--yellow))';
+  if(remaining <= 25) document.getElementById('threatFill').style.background = 'linear-gradient(90deg,var(--cyan-dim),var(--cyan))';
+}
+
+// Atualiza status visual dos sistemas monitorados
+function updateSystemStatus(upd){
+  const panel = document.getElementById(upd.id);
+  const dot = document.getElementById(upd.dotId);
+  const badge = document.getElementById(upd.badgeId);
+  const prog = document.getElementById(upd.progId);
+  if(!panel) return;
+  panel.className = 'sys-panel-item ' + upd.status;
+  dot.className = 'spi-dot ' + upd.dot;
+  badge.className = 'spi-badge ' + upd.badgeClass;
+  badge.textContent = upd.badge;
+  prog.style.width = upd.prog;
+  prog.style.background = upd.color;
+}
+
+// Adiciona eventos no painel lateral de logs
+function addLog(msg, type){
+  const box = document.getElementById('logBox');
+  const div = document.createElement('div');
+  div.className = 'log-entry ' + (type||'');
+  const now = new Date();
+  const time = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+  div.textContent = `[${time}] ${msg}`;
+  box.insertBefore(div, box.firstChild);
+}
+
+// Exibe overlay visual de erro ou sucesso
+function flashOverlay(type){
+  const el = document.getElementById(type==='neut'?'neutOverlay':'errOverlay');
+  el.classList.remove('show');
+  void el.offsetWidth;
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 1000);
+}
+
+// Exibe tela final após concluir todas as fases
+function showSuccess(){
+
+  const victorySound = document.getElementById('victorySound');
+
+  if(victorySound){
+    victorySound.currentTime = 0;
+    victorySound.play().catch(()=>{});
+  }
+
+  const elapsed = Math.round((Date.now() - startTime) / 1000);
+  const mins = Math.floor(elapsed/60);
+  const secs = elapsed % 60;
+  document.getElementById('statTime').textContent = `${mins}m${String(secs).padStart(2,'0')}s`;
+
+  // Codigo de conclusao + carga do formulario embutido
+  document.getElementById('completionCode').textContent = gerarCodigo();
+  document.getElementById('formFrame').src = FORM_EMBED_URL;
+
+  // update all systems to secure
+  const allUpd = [
+    {id:'spi-primus',dotId:'dot-primus',badgeId:'badge-primus',progId:'prog-primus',status:'secure',dot:'green',badge:'SEGURO',badgeClass:'green',prog:'5%',color:'var(--green)'},
+    {id:'spi-mes',dotId:'dot-mes',badgeId:'badge-mes',progId:'prog-mes',status:'secure',dot:'green',badge:'SEGURO',badgeClass:'green',prog:'5%',color:'var(--green)'},
+    {id:'spi-win',dotId:'dot-win',badgeId:'badge-win',progId:'prog-win',status:'secure',dot:'green',badge:'SEGURO',badgeClass:'green',prog:'5%',color:'var(--green)'},
+  ];
+  allUpd.forEach(u=>updateSystemStatus(u));
+
+  document.getElementById('screen-game').classList.remove('active');
+  document.getElementById('screen-success').classList.add('active');
+}
+
+// ==================== REGISTRO / SORTEIO ====================
+
+// URL de embed do Forms. O link curto /r/RkcnJddwcL redireciona 301 para esta.
+// So e atribuida ao iframe dentro de showSuccess(), para nao baixar a pagina da
+// Microsoft durante o jogo.
+const FORM_EMBED_URL = 'https://forms.cloud.microsoft/pages/responsepage.aspx?id=u9UAOiYsGUKgXyzSvpSN3lES7OA-cxFGqlKJLQxSiaJURU5NSEhaVk9RM1dSWTNLQkVYMFJJSFNKMi4u&embed=true';
+
+const CODE_ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+
+// Codigo de conclusao no formato BLK-XXXXXXX:
+//   6 chars -> sorteados, 36^6 = 2,18 bilhoes de combinacoes
+//   1 char  -> digito verificador: soma base36 dos 6 anteriores, mod 36
+//
+// Por que sorteado e nao derivado do horario: um codigo baseado em timestamp
+// colide entre jogadores que comecam junto (sessao de treinamento coletiva), e
+// como a apuracao descarta codigo repetido isso eliminaria participante legitimo.
+// Com 6 chars sorteados, a chance de duas partidas gerarem o mesmo codigo e de
+// ~0,02% para mil jogadores.
+//
+// O digito verificador e o que permite descartar codigo inventado na apuracao:
+// pega 100% dos erros de digitacao de 1 caractere e ~97% dos palpites aleatorios.
+//
+// O deslocamento de 7 na soma existe para que o palpite mais obvio de todos,
+// BLK-0000000, nao valide: sem ele, soma 0 pediria digito '0' e o codigo com
+// todos os caracteres zerados passaria na conferencia.
+function gerarCodigo(){
+  let core = '';
+
+  // crypto quando disponivel; Math.random so como ultimo recurso
+  if(window.crypto && window.crypto.getRandomValues){
+    const buf = new Uint8Array(6);
+    window.crypto.getRandomValues(buf);
+    // 252 = 36*7: descarta o resto da faixa de 0-255 para nao enviesar o sorteio
+    for(let i = 0; i < 6; i++){
+      let v = buf[i];
+      while(v >= 252){
+        const extra = new Uint8Array(1);
+        window.crypto.getRandomValues(extra);
+        v = extra[0];
+      }
+      core += CODE_ALPHABET[v % 36];
+    }
+  } else {
+    for(let i = 0; i < 6; i++) core += CODE_ALPHABET[Math.floor(Math.random() * 36)];
+  }
+
+  let soma = 7;
+  for(const ch of core) soma += CODE_ALPHABET.indexOf(ch);
+
+  return 'BLK-' + core + CODE_ALPHABET[soma % 36];
+}
+
+function copiarCodigo(){
+  const txt = document.getElementById('completionCode').textContent.trim();
+  const btn = document.getElementById('codeCopyBtn');
+
+  const ok = () => {
+    if(!btn) return;
+    btn.textContent = 'copiado';
+    btn.classList.add('done');
+    setTimeout(()=>{ btn.textContent = 'copiar'; btn.classList.remove('done'); }, 2000);
+  };
+
+  if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(txt).then(ok).catch(()=>copiarFallback(txt, ok));
+  } else {
+    copiarFallback(txt, ok);
+  }
+}
+
+// Fallback para navegador corporativo antigo ou contexto nao-HTTPS
+function copiarFallback(txt, ok){
+  try{
+    const ta = document.createElement('textarea');
+    ta.value = txt;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    ok();
+  } catch(e){
+    // sem clipboard disponivel: o codigo segue selecionavel via user-select:all
+  }
+}
+
+// Fallback caso o iframe seja barrado por proxy corporativo ou extensao
+function openForm(){
+  window.open('https://forms.office.com/r/RkcnJddwcL','_blank','noopener,noreferrer');
+}
+</script>
+
+
+<audio id="bgMusic" loop>
+  <source src="audio/bg.mp3" type="audio/mpeg">
+</audio>
+
+<audio id="clickSound" preload="auto">
+  <source src="audio/click.wav" type="audio/wav">
+</audio>
+
+<audio id="successSound" preload="auto">
+  <source src="audio/success.wav" type="audio/wav">
+</audio>
+
+<audio id="errorSound" preload="auto">
+  <source src="audio/error.wav" type="audio/wav">
+</audio>
+
+<audio id="phaseSound" preload="auto">
+  <source src="audio/phase.wav" type="audio/wav">
+</audio>
+
+<audio id="victorySound" preload="auto">
+  <source src="audio/victory.wav" type="audio/wav">
+</audio>
+
+
+
+<audio id="typingSound" preload="auto">
+  <source src="audio/typing.wav" type="audio/wav">
+</audio>
+
+</body>
+</html>
