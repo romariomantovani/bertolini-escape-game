@@ -84,8 +84,17 @@
   .screen.active { display: flex; }
 
   /* ===================== INTRO SCREEN ===================== */
+  /* overflow-y + "safe center": com justify-content:center puro, conteudo mais
+     alto que a viewport e cortado em cima E embaixo sem nenhuma forma de rolar
+     — em 360x640 o botao INICIAR CONTENCAO ficava 23px fora da tela. O "safe"
+     desliga o centramento quando falta espaco; navegador que nao conhece a
+     palavra ignora a segunda declaracao e fica com o center da primeira. */
   #screen-intro {
     background: radial-gradient(ellipse 100% 80% at 50% 50%, #010a18 0%, var(--bg) 100%);
+    overflow-y: auto;
+    padding: 24px 16px;
+    justify-content: center;
+    justify-content: safe center;
   }
 
   .intro-bg-grid {
@@ -248,7 +257,9 @@
     position: sticky; top: 0; z-index: 100;
     background: rgba(2,8,16,0.97);
     border-bottom: 1px solid var(--border);
-    padding: 0 20px;
+    /* 52px a direita reservam a vaga do #soundToggle, que e fixed e cairia em
+       cima do contador FASE x/8 nesta tela. */
+    padding: 0 52px 0 20px;
     display: flex; align-items: center; gap: 16px;
     height: 52px;
     backdrop-filter: blur(10px);
@@ -807,6 +818,45 @@
     0%{opacity:0} 30%{opacity:1} 100%{opacity:0}
   }
 
+  /* ===================== CONTROLE DE SOM ===================== */
+  /* z-index 600: acima da .topbar (100), que e sticky e ocuparia este canto na
+     tela do jogo, e abaixo da .scanline (9999). Canto superior direito porque
+     no rodape ele cairia por cima do formulario do Forms na tela final. */
+  #soundToggle {
+    position: fixed; top: 8px; right: 8px;
+    width: 36px; height: 36px;
+    z-index: 600;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    color: var(--cyan);
+    font-size: 16px; line-height: 1;
+    padding: 0;
+    cursor: pointer;
+    transition: border-color .2s, box-shadow .2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  #soundToggle:hover {
+    border-color: var(--border-bright);
+    box-shadow: 0 0 14px rgba(0,212,255,.45);
+  }
+  /* Bloqueado pelo navegador: precisa chamar atencao, porque clicar aqui e a
+     unica forma de o usuario recuperar o som. Ambar, nao vermelho — vermelho
+     neste jogo significa ameaca. */
+  #soundToggle.blocked {
+    border-color: var(--orange);
+    color: var(--orange);
+    animation: soundBlocked 1.4s ease-in-out infinite;
+  }
+  @keyframes soundBlocked {
+    0%,100% { box-shadow: 0 0 0 rgba(255,136,0,0) }
+    50%     { box-shadow: 0 0 16px rgba(255,136,0,.7) }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #soundToggle.blocked { animation: none; }
+  }
+
   /* POST IT */
   .postit {
     display: inline-block;
@@ -895,7 +945,9 @@
   .topbar{
     height:auto;
     min-height:52px;
-    padding:10px;
+    /* Mesma vaga reservada do layout largo: aqui o botao de som caia em cima
+       do percentual de ameaca, encostado na borda direita. */
+    padding:10px 46px 10px 10px;
     flex-wrap:wrap;
     gap:10px;
   }
@@ -971,6 +1023,19 @@
   .form-embed-wrap iframe{
     max-height:none;
   }
+}
+
+/* Telas baixas (celular com a barra do navegador aberta, notebook 1366x768 com
+   zoom): so as margens de 48px da introducao somam quase 140px e empurravam o
+   botao de iniciar para fora. Encolhe-las devolve o conteudo para dentro da
+   dobra; o overflow-y do #screen-intro cobre o que ainda assim estourar. */
+@media (max-height:700px){
+  .soc-logo       { margin-bottom: 16px; }
+  .soc-logo-icon  { width: 60px; height: 60px; margin-bottom: 10px; }
+  .incident-badge { margin-bottom: 14px; }
+  .intro-sub      { margin-bottom: 20px; }
+  .systems-status { margin-bottom: 20px; }
+  .terminal-text  { margin-bottom: 20px; font-size: 16px; }
 }
 
 /* EFEITO BOTÃO INICIAR */
@@ -1063,6 +1128,9 @@
 <canvas id="particles"></canvas>
 <div class="neutralized-overlay" id="neutOverlay"></div>
 <div class="error-overlay" id="errOverlay"></div>
+
+<button id="soundToggle" type="button" aria-pressed="true"
+        aria-label="Ligar ou desligar o som" title="Desligar o som">🔊</button>
 
 <!-- ==================== INTRO ==================== -->
 <div class="screen active" id="screen-intro">
@@ -1323,14 +1391,218 @@
 
 
 // ==================== SISTEMA DE ÁUDIO ====================
-// bgMusic      -> música ambiente principal
-// Botões principais também utilizam clickSound para reforçar interação
-// clickSound   -> clique em botões e respostas
+// bgMusic      -> música ambiente principal (em loop)
+// clickSound   -> clique em botões
 // successSound -> resposta correta
 // errorSound   -> resposta incorreta
 // phaseSound   -> avanço de fase
 // victorySound -> conclusão do jogo
 // typingSound  -> efeito de terminal digitando
+//
+// Tudo passa por AudioCtl. Antes cada chamada repetia currentTime/volume/play
+// e engolia a rejeição num .catch vazio: quando o navegador bloqueava a
+// reprodução (Edge "Limitar mídia", permissão de Som negada por política,
+// extensão corporativa) o jogo ficava mudo sem nenhum sinal na tela e sem
+// nenhuma nova tentativa. Daí os relatos de "o som não tocou no computador".
+// A outra causa era o volume: a trilha estava em 0.12, cerca de -18 dB, que
+// num alto-falante de notebook não se ouve.
+//
+// iOS: o Safari do iPhone ignora escrita em .volume — a propriedade é somente
+// leitura lá. Por isso o botão de som usa .muted, que funciona, e o fade
+// detecta a escrita sem efeito e cai para play/pause seco. Consequência
+// aceita: no iPhone a trilha toca no volume do próprio arquivo.
+const AudioCtl = {
+
+  BG_VOLUME: 0.25,
+
+  ids: ['bgMusic','clickSound','successSound','errorSound','phaseSound','victorySound','typingSound'],
+
+  enabled: true,
+  bgBlocked: false,
+  finished: false,
+  _fade: null,
+  _retryArmed: false,
+  _offRetry: null,
+  _wasPlaying: false,
+
+  el(id){ return document.getElementById(id); },
+
+  // Efeito pontual. vol é o volume alvo; sem efeito no iPhone, onde .volume
+  // não grava.
+  sfx(id, vol){
+    const a = this.el(id);
+    if(!a || !this.enabled) return;
+    try { a.volume = (vol === undefined ? 1 : vol); } catch(e){}
+    a.currentTime = 0;
+    const p = a.play();
+    if(p && p.catch) p.catch(()=>{});
+  },
+
+  stop(id){
+    const a = this.el(id);
+    if(!a) return;
+    a.pause();
+    a.currentTime = 0;
+  },
+
+  // true quando o navegador aceita escrita em .volume (false no iPhone).
+  // Escreve e restaura no mesmo tick, então é inaudível.
+  canFade(a){
+    const before = a.volume;
+    try { a.volume = (before === 0 ? 0.5 : 0); } catch(e){ return false; }
+    const changed = (a.volume !== before);
+    try { a.volume = before; } catch(e){}
+    return changed;
+  },
+
+  // Idempotente: chamada por startMission, por startGame, pelo botão de som e
+  // de novo a cada interação enquanto o navegador estiver bloqueando.
+  startBg(){
+    const a = this.el('bgMusic');
+    if(!a || !this.enabled || this.finished) return;
+    if(!a.paused) return;
+
+    const fade = this.canFade(a);
+    if(fade) a.volume = 0;
+
+    const ok = ()=>{
+      this.bgBlocked = false;
+      this.disarmRetry();
+      this.paint();
+      if(fade) this.fadeTo(a, this.BG_VOLUME, 1500);
+    };
+    const fail = ()=>{
+      this.bgBlocked = true;
+      this.paint();
+      this.armRetry();
+    };
+
+    const p = a.play();
+    if(p && p.then) p.then(ok, fail); else ok();
+  },
+
+  stopBg(ms){
+    const a = this.el('bgMusic');
+    if(!a) return;
+    if(a.paused || !ms || !this.canFade(a)){
+      clearInterval(this._fade);
+      this._fade = null;
+      a.pause();
+      return;
+    }
+    this.fadeTo(a, 0, ms, ()=>a.pause());
+  },
+
+  // Um fade por vez: o anterior é cancelado antes, senão dois intervalos
+  // disputam o mesmo .volume e o alvo nunca é alcançado.
+  fadeTo(a, target, ms, done){
+    clearInterval(this._fade);
+    const from = a.volume;
+    const steps = Math.max(1, Math.round(ms / 50));
+    let i = 0;
+    this._fade = setInterval(()=>{
+      i++;
+      const v = from + (target - from) * (i / steps);
+      a.volume = Math.min(1, Math.max(0, v));
+      if(i >= steps){
+        clearInterval(this._fade);
+        this._fade = null;
+        if(done) done();
+      }
+    }, 50);
+  },
+
+  // Rede de segurança: alguns navegadores consomem o primeiro gesto sem
+  // liberar a mídia. Enquanto estiver bloqueado, tenta de novo a cada
+  // interação e se desarma sozinho quando a música engata.
+  armRetry(){
+    if(this._retryArmed) return;
+    this._retryArmed = true;
+
+    const off = ()=>{
+      this._retryArmed = false;
+      this._offRetry = null;
+      document.removeEventListener('pointerdown', retry, true);
+      document.removeEventListener('keydown', retry, true);
+      document.removeEventListener('touchstart', retry, true);
+    };
+    const retry = ()=>{
+      if(!this.bgBlocked || !this.enabled || this.finished){ off(); return; }
+      this.startBg();
+    };
+
+    this._offRetry = off;
+    document.addEventListener('pointerdown', retry, true);
+    document.addEventListener('keydown', retry, true);
+    document.addEventListener('touchstart', retry, true);
+  },
+
+  // Chamado pelo proprio startBg quando o play e aceito: bgBlocked so cai no
+  // then da promise, entao quem desarma e o sucesso, nao o retorno do retry.
+  disarmRetry(){
+    if(this._offRetry) this._offRetry();
+  },
+
+  // .muted e não .volume: é o único caminho que o iPhone respeita.
+  setEnabled(on){
+    this.enabled = on;
+    this.ids.forEach(id=>{ const a = this.el(id); if(a) a.muted = !on; });
+
+    if(on){
+      if(!this.finished) this.startBg();
+    } else {
+      this.stopBg(0);
+    }
+
+    try { sessionStorage.setItem('blackout.sound', on ? '1' : '0'); } catch(e){}
+    this.paint();
+  },
+
+  paint(){
+    const b = this.el('soundToggle');
+    if(!b) return;
+    const blocked = this.enabled && this.bgBlocked;
+    b.textContent = (this.enabled && !blocked) ? '🔊' : '🔇';
+    b.setAttribute('aria-pressed', this.enabled ? 'true' : 'false');
+    b.classList.toggle('blocked', blocked);
+    b.title = blocked
+      ? 'O navegador bloqueou o som — clique para tentar de novo'
+      : (this.enabled ? 'Desligar o som' : 'Ligar o som');
+  },
+
+  init(){
+    let saved = null;
+    try { saved = sessionStorage.getItem('blackout.sound'); } catch(e){}
+    this.enabled = (saved !== '0');
+    this.ids.forEach(id=>{ const a = this.el(id); if(a) a.muted = !this.enabled; });
+
+    const b = this.el('soundToggle');
+    if(b) b.addEventListener('click', ()=>{
+      // Bloqueado: o clique é uma nova tentativa, não um desligar.
+      if(this.enabled && this.bgBlocked){ this.startBg(); return; }
+      this.setEnabled(!this.enabled);
+    });
+
+    // Música tocando numa aba em segundo plano só atrapalha.
+    document.addEventListener('visibilitychange', ()=>{
+      const a = this.el('bgMusic');
+      if(!a) return;
+      if(document.hidden){
+        if(!a.paused){
+          this._wasPlaying = true;
+          clearInterval(this._fade);
+          this._fade = null;
+          a.pause();
+        }
+      } else if(this._wasPlaying){
+        this._wasPlaying = false;
+        this.startBg();
+      }
+    });
+
+    this.paint();
+  }
+};
 
 
 // ==================== TERMINAL TYPING ====================
@@ -1346,33 +1618,20 @@ const introLines = [
 
 function startMission(){
 
-  const clickSound = document.getElementById('clickSound');
-
-  if(clickSound){
-    clickSound.currentTime = 0;
-    clickSound.play().catch(()=>{});
-  }
+  AudioCtl.sfx('clickSound');
 
   const missionBtn = document.getElementById('missionBtn');
   const term = document.getElementById('termText');
+  const warn = document.getElementById('soundWarning');
 
   missionBtn.style.display = 'none';
   term.style.display = 'block';
 
-  const bgMusic = document.getElementById('bgMusic');
+  // A partir daqui quem informa o estado do som é o botão fixo no canto.
+  if(warn) warn.style.display = 'none';
 
-  if(bgMusic){
-    bgMusic.volume = 0.12;
-    bgMusic.play().catch(()=>{});
-  }
-
-  const typingSound = document.getElementById('typingSound');
-
-  if(typingSound){
-    typingSound.volume = 0.35;
-    typingSound.currentTime = 0;
-    typingSound.play().catch(()=>{});
-  }
+  AudioCtl.startBg();
+  AudioCtl.sfx('typingSound', 0.35);
 
   let li = 0;
   let ci = 0;
@@ -1383,10 +1642,7 @@ function startMission(){
 
       term.innerHTML = introLines[introLines.length-1] + ' <span class="cursor-blink">█</span>';
 
-      if(typingSound){
-        typingSound.pause();
-        typingSound.currentTime = 0;
-      }
+      AudioCtl.stop('typingSound');
 
       document.getElementById('startBtn').style.display = 'inline-flex';
       return;
@@ -1720,19 +1976,8 @@ let answered = false;
 
 function startGame(){
 
-  const clickSound = document.getElementById('clickSound');
-
-  if(clickSound){
-    clickSound.currentTime = 0;
-    clickSound.play().catch(()=>{});
-  }
-
-  const bgMusic = document.getElementById('bgMusic');
-
-  if(bgMusic){
-    bgMusic.volume = 0.12;
-    bgMusic.play().catch(()=>{});
-  }
+  AudioCtl.sfx('clickSound');
+  AudioCtl.startBg();
 
   document.getElementById('screen-intro').classList.remove('active');
   document.getElementById('screen-game').classList.add('active');
@@ -1787,7 +2032,6 @@ function loadPhase(idx){
     </div>
   `;
   container.appendChild(div);
-  document.getElementById('mainContent').scrollTop = 0;
 }
 
 // Processa resposta do usuário e valida acerto/erro
@@ -1816,14 +2060,8 @@ function selectAnswer(idx){
     fb.className = 'feedback-box';
     fb.classList.add('show');
     fb.classList.add('success');
-    const successSound = document.getElementById('successSound');
-
-    if(successSound){
-      // Explicito para ficar par a par com o som de erro — ver nota la embaixo
-      successSound.volume = 1.0;
-      successSound.currentTime = 0;
-      successSound.play().catch(()=>{});
-    }
+    // Explicito para ficar par a par com o som de erro — ver nota la embaixo
+    AudioCtl.sfx('successSound', 1.0);
 
     fbTitle.textContent = '✓ AMEAÇA NEUTRALIZADA';
     fbText.textContent = phase.feedbackOk;
@@ -1862,17 +2100,10 @@ function selectAnswer(idx){
     fb.classList.add('show');
     fb.classList.add('error');
 
-    const errorSound = document.getElementById('errorSound');
-
-    if(errorSound){
-
-      // Mesmo volume do acerto. Estava em 0.45 e, somado ao clickSound que
-      // tocava junto a 1.0, o erro saia como o som mais fraco da tela — dava a
-      // impressao de que nao tocava. Ele tocava; ninguem ouvia.
-      errorSound.volume = 1.0;
-      errorSound.currentTime = 0;
-      errorSound.play().catch(()=>{});
-    }
+    // Mesmo volume do acerto. Estava em 0.45 e, somado ao clickSound que
+    // tocava junto a 1.0, o erro saia como o som mais fraco da tela — dava a
+    // impressao de que nao tocava. Ele tocava; ninguem ouvia.
+    AudioCtl.sfx('errorSound', 1.0);
 
     fbTitle.textContent = '✗ RESPOSTA INCORRETA — AMEAÇA PERSISTE';
     fbText.textContent = phase.feedbackErr;
@@ -1907,17 +2138,15 @@ function selectAnswer(idx){
 // Avança para a próxima fase
 function nextPhase(){
 
-  const phaseSound = document.getElementById('phaseSound');
-
-  if(phaseSound){
-    phaseSound.currentTime = 0;
-    phaseSound.play().catch(()=>{});
-  }
-
   if(currentPhase >= phases.length -1){
     showSuccess();
     return;
   }
+
+  // Depois do teste de fim de jogo, nao antes: na fase 8 o phaseSound disparava
+  // junto com o victorySound de showSuccess e os dois se atropelavam.
+  AudioCtl.sfx('phaseSound');
+
   loadPhase(currentPhase+1);
   document.getElementById('screen-game').scrollTop = 0;
 }
@@ -1976,12 +2205,12 @@ function flashOverlay(type){
 // Exibe tela final após concluir todas as fases
 function showSuccess(){
 
-  const victorySound = document.getElementById('victorySound');
-
-  if(victorySound){
-    victorySound.currentTime = 0;
-    victorySound.play().catch(()=>{});
-  }
+  // Fim do desafio: a trilha sai de cena para o usuario se concentrar no
+  // formulario do sorteio. O som de vitoria toca por cima do fade.
+  AudioCtl.finished = true;
+  AudioCtl.stopBg(800);
+  AudioCtl.stop('typingSound');
+  AudioCtl.sfx('victorySound');
 
   const elapsed = Math.round((Date.now() - startTime) / 1000);
   const mins = Math.floor(elapsed/60);
@@ -2014,10 +2243,19 @@ const FORM_EMBED_URL = 'https://forms.cloud.microsoft/pages/responsepage.aspx?id
 function openForm(){
   window.open('https://forms.office.com/r/RkcnJddwcL','_blank','noopener,noreferrer');
 }
+
+
+// Os elementos <audio> ficam no fim do body, depois deste script, entao o
+// init espera o documento terminar de ser lido.
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', ()=>AudioCtl.init());
+} else {
+  AudioCtl.init();
+}
 </script>
 
 
-<audio id="bgMusic" loop>
+<audio id="bgMusic" loop preload="auto">
   <source src="audio/bg.mp3" type="audio/mpeg">
 </audio>
 
